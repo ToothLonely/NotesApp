@@ -89,18 +89,20 @@
 ```text
 feature/notes/impl/presentation/notes/
 |-- NotesRoute.kt
-|-- NotesScreen.kt
 |-- NotesUiState.kt
 |-- NotesViewModel.kt
+|-- screens/
+|   |-- NotesScreen.kt
+|   |-- NotesLoadingScreen.kt
+|   |-- NotesEmptyScreen.kt
+|   |-- NotesErrorScreen.kt
+|   `-- NotesContentScreen.kt
 `-- components/
     |-- NotesTopBar.kt
     |-- NotesViewModeButton.kt
     |-- NoteCard.kt
-    |-- NotesList.kt
     |-- NoteGridCard.kt
     |-- NotesGrid.kt
-    |-- NotesEmptyState.kt
-    |-- NotesErrorState.kt
     `-- DeleteModeBanner.kt
 ```
 
