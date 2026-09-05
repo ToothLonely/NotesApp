@@ -32,4 +32,6 @@ include(
     ":core:data",
     ":core:designsystem",
     ":core:domain",
+    ":feature:notes:api",
+    ":feature:notes:impl",
 )
