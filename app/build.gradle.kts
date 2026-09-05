@@ -1,6 +1,7 @@
 plugins {
     id("notesapp.android.application")
     id("notesapp.android.application.compose")
+    id("notesapp.koin")
 }
 
 android {
@@ -29,6 +30,12 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:domain"))
+    implementation(project(":feature:notes:api"))
+    implementation(project(":feature:notes:impl"))
+
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
