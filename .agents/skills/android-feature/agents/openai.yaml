@@ -1,0 +1,6 @@
+interface:
+  display_name: "Реализация Android-фичи"
+  short_description: "Реализация Android-фич вертикальными срезами по NIA"
+  default_prompt: "Используй $android-feature, чтобы реализовать эту Android-фичу как протестированный вертикальный срез."
+policy:
+  allow_implicit_invocation: true
