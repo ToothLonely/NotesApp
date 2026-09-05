@@ -27,4 +27,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "NotesApp"
 
-include(":app")
+include(
+    ":app",
+    ":core:data",
+    ":core:designsystem",
+    ":core:domain",
+)
