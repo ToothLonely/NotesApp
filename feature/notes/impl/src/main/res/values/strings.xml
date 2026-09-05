@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notes_title">Заметки</string>
+    <string name="notes_loading">Загружаем заметки…</string>
+    <string name="notes_empty_title">Заметок пока нет</string>
+    <string name="notes_empty_description">Создайте первую заметку</string>
+    <string name="notes_create">Создать заметку</string>
+    <string name="notes_error_title">Не удалось загрузить заметки</string>
+    <string name="retry">Повторить</string>
+    <string name="note_created_date">Создано %1$s</string>
+    <string name="note_editor_back">Назад</string>
+    <string name="note_title_label">Заголовок заметки</string>
+    <string name="note_title_placeholder">Заголовок вашей заметки</string>
+    <string name="note_body_label">Текст заметки</string>
+    <string name="note_save">Сохранить</string>
+    <string name="note_saving">Сохраняем заметку…</string>
+    <string name="note_save_error">Не удалось сохранить заметку</string>
+    <string name="note_editor_loading">Готовим новую заметку…</string>
+    <string name="note_editor_error">Не удалось открыть редактор</string>
+    <string name="note_generated_title_format">Заметка %1$d</string>
+</resources>
