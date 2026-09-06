@@ -27,6 +27,7 @@ fun NotesApp() {
             entryProvider = entryProvider<NavKey> {
                 notesEntries(
                     onCreateNote = { backStack.add(NoteEditorRoute()) },
+                    onOpenNote = { noteId -> backStack.add(NoteEditorRoute(noteId)) },
                     onCloseEditor = { backStack.removeLastOrNull() },
                 )
             },

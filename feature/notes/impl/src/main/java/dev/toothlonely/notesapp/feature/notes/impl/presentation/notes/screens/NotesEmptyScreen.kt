@@ -24,6 +24,7 @@ fun NotesEmptyScreen(
     title: String,
     description: String,
     actionLabel: String,
+    showCreateAction: Boolean,
     onCreateNote: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -50,12 +51,14 @@ fun NotesEmptyScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
         )
-        Button(
-            onClick = onCreateNote,
-            modifier = Modifier.heightIn(min = NotesAppSizes.buttonMinimumHeight),
-            shape = NotesAppShapes.full,
-        ) {
-            Text(text = actionLabel)
+        if (showCreateAction) {
+            Button(
+                onClick = onCreateNote,
+                modifier = Modifier.heightIn(min = NotesAppSizes.buttonMinimumHeight),
+                shape = NotesAppShapes.full,
+            ) {
+                Text(text = actionLabel)
+            }
         }
     }
 }
@@ -68,6 +71,7 @@ private fun NotesEmptyScreenPreview() {
             title = "Заметок пока нет",
             description = "Создайте первую заметку",
             actionLabel = "Создать заметку",
+            showCreateAction = true,
             onCreateNote = {},
         )
     }

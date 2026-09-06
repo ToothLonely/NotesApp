@@ -14,9 +14,14 @@ import dev.toothlonely.notesapp.feature.notes.impl.domain.Note
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.NoteCard
 
 @Composable
-fun NotesContentScreen(
+fun NotesListScreen(
     notes: List<Note>,
     createdDateFormat: String,
+    deleteDescription: (String) -> String,
+    isDeleteMode: Boolean,
+    deletingNoteIds: Set<Long>,
+    onOpenNote: (Long) -> Unit,
+    onDeleteNote: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -31,6 +36,11 @@ fun NotesContentScreen(
             NoteCard(
                 note = note,
                 createdDateFormat = createdDateFormat,
+                deleteDescription = deleteDescription(note.title),
+                isDeleteMode = isDeleteMode,
+                isDeleting = note.id in deletingNoteIds,
+                onOpen = { onOpenNote(note.id) },
+                onDelete = { onDeleteNote(note.id) },
             )
         }
     }
@@ -38,11 +48,19 @@ fun NotesContentScreen(
 
 @Preview(showBackground = true)
 @Composable
-private fun NotesContentScreenPreview() {
+private fun NotesListScreenPreview() {
     NotesAppTheme {
-        NotesContentScreen(
-            notes = listOf(Note(1, "Первая заметка", "Текст", 1_750_000_000_000)),
+        NotesListScreen(
+            notes = listOf(
+                Note(1, "Первая заметка", "Текст", 1_750_000_000_000),
+                Note(1, "Первая заметка", "Текст", 1_750_000_000_000)
+            ),
             createdDateFormat = "Создано %s",
+            deleteDescription = { title -> "Удалить заметку «$title»" },
+            isDeleteMode = true,
+            deletingNoteIds = emptySet(),
+            onOpenNote = {},
+            onDeleteNote = {},
         )
     }
 }

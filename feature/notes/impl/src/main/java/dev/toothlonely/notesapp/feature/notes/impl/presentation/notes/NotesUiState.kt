@@ -2,14 +2,21 @@ package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes
 
 import dev.toothlonely.notesapp.feature.notes.impl.domain.Note
 
-sealed interface NotesUiState {
-    data object Loading : NotesUiState
+data class NotesUiState(
+    val content: NotesContentState = NotesContentState.Loading,
+    val isDeleteMode: Boolean = false,
+    val deletingNoteIds: Set<Long> = emptySet(),
+    val failedDeleteNoteId: Long? = null,
+)
 
-    data object Empty : NotesUiState
+sealed interface NotesContentState {
+    data object Loading : NotesContentState
+
+    data object Empty : NotesContentState
 
     data class Content(
         val notes: List<Note>,
-    ) : NotesUiState
+    ) : NotesContentState
 
-    data object Error : NotesUiState
+    data object Error : NotesContentState
 }

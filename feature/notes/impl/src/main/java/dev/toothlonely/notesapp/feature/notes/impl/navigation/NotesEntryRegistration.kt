@@ -9,10 +9,14 @@ import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.NotesRoute
 
 fun EntryProviderScope<NavKey>.notesEntries(
     onCreateNote: () -> Unit,
+    onOpenNote: (Long) -> Unit,
     onCloseEditor: () -> Unit,
 ) {
     entry<NotesRoute> {
-        NotesRouteContent(onCreateNote = onCreateNote)
+        NotesRouteContent(
+            onCreateNote = onCreateNote,
+            onOpenNote = onOpenNote,
+        )
     }
     entry<NoteEditorRoute> { route ->
         NoteEditorRouteContent(

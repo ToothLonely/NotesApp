@@ -1,7 +1,9 @@
 package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.screens
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.FloatingActionButton
@@ -19,31 +21,60 @@ import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
 import dev.toothlonely.notesapp.feature.notes.impl.R
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.NotesContentState
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.NotesUiState
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.DeleteModeBanner
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.NotesDeleteErrorBanner
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.NotesTopBar
 
 @Composable
 fun NotesScreen(
     state: NotesUiState,
     onCreateNote: () -> Unit,
-    onRetry: () -> Unit,
+    onOpenNote: (Long) -> Unit,
+    onToggleDeleteMode: () -> Unit,
+    onDeleteNote: (Long) -> Unit,
+    onRetryDelete: () -> Unit,
+    onDismissDeleteError: () -> Unit,
+    onRetryLoading: () -> Unit,
+    snackbarHost: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val deleteDescriptionFormat = stringResource(R.string.notes_delete_note)
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { NotesTopBar(title = stringResource(R.string.notes_title)) },
+        topBar = {
+            NotesTopBar(
+                title = stringResource(
+                    if (state.isDeleteMode) {
+                        R.string.notes_delete_mode_title
+                    } else {
+                        R.string.notes_title
+                    },
+                ),
+                isDeleteMode = state.isDeleteMode,
+                deleteActionEnabled = state.isDeleteMode ||
+                    state.content is NotesContentState.Content,
+                enterDeleteModeLabel = stringResource(R.string.notes_enter_delete_mode),
+                exitDeleteModeLabel = stringResource(R.string.notes_exit_delete_mode),
+                onToggleDeleteMode = onToggleDeleteMode,
+            )
+        },
+        snackbarHost = snackbarHost,
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onCreateNote,
-                shape = NotesAppShapes.full,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ) {
-                Icon(
-                    imageVector = NotesAppIcons.Add,
-                    contentDescription = stringResource(R.string.notes_create),
-                )
+            if (!state.isDeleteMode) {
+                FloatingActionButton(
+                    onClick = onCreateNote,
+                    shape = NotesAppShapes.full,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    Icon(
+                        imageVector = NotesAppIcons.Add,
+                        contentDescription = stringResource(R.string.notes_create),
+                    )
+                }
             }
         },
     ) { contentPadding ->
@@ -53,39 +84,73 @@ fun NotesScreen(
                 .padding(contentPadding),
             contentAlignment = Alignment.TopCenter,
         ) {
-            val contentModifier = Modifier
-                .fillMaxSize()
-                .widthIn(max = NotesAppSizes.maximumContentWidth)
-                .padding(horizontal = NotesAppSpacing.space4)
+            Column(
+                modifier = Modifier
+                    .widthIn(max = NotesAppSizes.maximumContentWidth)
+                    .fillMaxSize()
+                    .padding(horizontal = NotesAppSpacing.space4),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                if (state.isDeleteMode) {
+                    DeleteModeBanner(
+                        message = stringResource(R.string.notes_delete_mode_banner),
+                        modifier = Modifier.padding(top = NotesAppSpacing.space3),
+                    )
+                }
+                if (state.isDeleteMode && state.failedDeleteNoteId != null) {
+                    NotesDeleteErrorBanner(
+                        message = stringResource(R.string.notes_delete_error),
+                        retryLabel = stringResource(R.string.retry),
+                        dismissLabel = stringResource(R.string.notes_dismiss_delete_error),
+                        onRetry = onRetryDelete,
+                        onDismiss = onDismissDeleteError,
+                        modifier = Modifier.padding(top = NotesAppSpacing.space3),
+                    )
+                }
 
-            when (state) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.TopCenter,
+                ) {
+                    val screenModifier = Modifier.fillMaxSize()
+                    when (val content = state.content) {
 
-                NotesUiState.Loading -> NotesLoadingScreen(
-                    label = stringResource(R.string.notes_loading),
-                    modifier = contentModifier,
-                )
+                        NotesContentState.Loading -> NotesLoadingScreen(
+                            label = stringResource(R.string.notes_loading),
+                            modifier = screenModifier,
+                        )
 
-                NotesUiState.Empty -> NotesEmptyScreen(
-                    title = stringResource(R.string.notes_empty_title),
-                    description = stringResource(R.string.notes_empty_description),
-                    actionLabel = stringResource(R.string.notes_create),
-                    onCreateNote = onCreateNote,
-                    modifier = contentModifier,
-                )
+                        NotesContentState.Empty -> NotesEmptyScreen(
+                            title = stringResource(R.string.notes_empty_title),
+                            description = stringResource(R.string.notes_empty_description),
+                            actionLabel = stringResource(R.string.notes_create),
+                            showCreateAction = !state.isDeleteMode,
+                            onCreateNote = onCreateNote,
+                            modifier = screenModifier,
+                        )
 
-                is NotesUiState.Content -> NotesContentScreen(
-                    notes = state.notes,
-                    createdDateFormat = stringResource(R.string.note_created_date),
-                    modifier = contentModifier,
-                )
+                        is NotesContentState.Content -> NotesListScreen(
+                            notes = content.notes,
+                            createdDateFormat = stringResource(R.string.note_created_date),
+                            deleteDescription = { title -> deleteDescriptionFormat.format(title) },
+                            isDeleteMode = state.isDeleteMode,
+                            deletingNoteIds = state.deletingNoteIds,
+                            onOpenNote = onOpenNote,
+                            onDeleteNote = onDeleteNote,
+                            modifier = screenModifier,
+                        )
 
-                NotesUiState.Error -> NotesErrorScreen(
-                    title = stringResource(R.string.notes_error_title),
-                    retryLabel = stringResource(R.string.retry),
-                    onRetry = onRetry,
-                    modifier = contentModifier,
-                )
+                        NotesContentState.Error -> NotesErrorScreen(
+                            title = stringResource(R.string.notes_error_title),
+                            retryLabel = stringResource(R.string.retry),
+                            onRetry = onRetryLoading,
+                            modifier = screenModifier,
+                        )
 
+                    }
+                }
             }
         }
     }
@@ -96,9 +161,15 @@ fun NotesScreen(
 private fun NotesScreenPreview() {
     NotesAppTheme {
         NotesScreen(
-            state = NotesUiState.Empty,
+            state = NotesUiState(content = NotesContentState.Empty),
             onCreateNote = {},
-            onRetry = {},
+            onOpenNote = {},
+            onToggleDeleteMode = {},
+            onDeleteNote = {},
+            onRetryDelete = {},
+            onDismissDeleteError = {},
+            onRetryLoading = {},
+            snackbarHost = {},
         )
     }
 }
