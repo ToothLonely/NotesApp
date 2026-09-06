@@ -18,4 +18,6 @@ data class NoteEntity(
     val createdAtMillis: Long,
     @ColumnInfo(name = "generated_title_number")
     val generatedTitleNumber: Int?,
+    @ColumnInfo(name = "updated_at_millis", defaultValue = "0")
+    val updatedAtMillis: Long = createdAtMillis,
 )

@@ -4,11 +4,13 @@ import dev.toothlonely.notesapp.core.data.database.model.NoteEntity
 import dev.toothlonely.notesapp.feature.notes.impl.domain.Note
 import dev.toothlonely.notesapp.feature.notes.impl.domain.NewNote
 
-internal fun NoteEntity.asExternalModel(): Note = Note(
+internal fun NoteEntity.asDomainModel(): Note = Note(
     id = id,
     title = title,
     content = content,
     createdAtMillis = createdAtMillis,
+    generatedTitleNumber = generatedTitleNumber,
+    updatedAtMillis = updatedAtMillis,
 )
 
 internal fun NewNote.asEntity(createdAtMillis: Long): NoteEntity = NoteEntity(
@@ -16,4 +18,5 @@ internal fun NewNote.asEntity(createdAtMillis: Long): NoteEntity = NoteEntity(
     content = content,
     createdAtMillis = createdAtMillis,
     generatedTitleNumber = generatedTitleNumber,
+    updatedAtMillis = createdAtMillis,
 )

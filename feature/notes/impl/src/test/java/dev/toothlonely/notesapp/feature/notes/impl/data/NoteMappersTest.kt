@@ -10,14 +10,22 @@ class NoteMappersTest {
     @Test
     fun `entity maps to domain note`() {
         assertEquals(
-            Note(id = 5, title = "Заголовок", content = "Текст", createdAtMillis = 123),
+            Note(
+                id = 5,
+                title = "Заголовок",
+                content = "Текст",
+                createdAtMillis = 123,
+                generatedTitleNumber = 7,
+                updatedAtMillis = 456,
+            ),
             NoteEntity(
                 id = 5,
                 title = "Заголовок",
                 content = "Текст",
                 createdAtMillis = 123,
-                generatedTitleNumber = null,
-            ).asExternalModel(),
+                generatedTitleNumber = 7,
+                updatedAtMillis = 456,
+            ).asDomainModel(),
         )
     }
 
@@ -29,6 +37,7 @@ class NoteMappersTest {
                 content = "",
                 createdAtMillis = 456,
                 generatedTitleNumber = 2,
+                updatedAtMillis = 456,
             ),
             NewNote(
                 title = "Заметка 2",

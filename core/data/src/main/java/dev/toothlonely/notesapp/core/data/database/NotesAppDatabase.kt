@@ -6,7 +6,7 @@ import dev.toothlonely.notesapp.core.data.database.model.NoteEntity
 
 @Database(
     entities = [NoteEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class NotesAppDatabase : RoomDatabase() {
