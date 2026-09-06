@@ -1,9 +1,12 @@
 package dev.toothlonely.notesapp.feature.notes.impl.presentation.editor
 
 sealed interface NoteEditorUiState {
-    data object Loading : NoteEditorUiState
+    data class Loading(
+        val isExistingNote: Boolean,
+    ) : NoteEditorUiState
 
     data class Content(
+        val mode: NoteEditorMode = NoteEditorMode.Creating,
         val title: String,
         val body: String,
         val generatedTitleNumber: Int,
@@ -12,8 +15,12 @@ sealed interface NoteEditorUiState {
         val hasSaveError: Boolean = false,
     ) : NoteEditorUiState {
         val isSaveEnabled: Boolean
-            get() = (title.isNotBlank() || body.isNotBlank()) && !isSaving
+            get() = mode != NoteEditorMode.Reading &&
+                (title.isNotBlank() || body.isNotBlank()) &&
+                !isSaving
     }
+
+    data object NotFound : NoteEditorUiState
 
     data object Error : NoteEditorUiState
 }

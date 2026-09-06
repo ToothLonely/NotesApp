@@ -14,7 +14,10 @@ fun EntryProviderScope<NavKey>.notesEntries(
     entry<NotesRoute> {
         NotesRouteContent(onCreateNote = onCreateNote)
     }
-    entry<NoteEditorRoute> {
-        NoteEditorRouteContent(onBack = onCloseEditor)
+    entry<NoteEditorRoute> { route ->
+        NoteEditorRouteContent(
+            noteId = route.noteId,
+            onBack = onCloseEditor,
+        )
     }
 }

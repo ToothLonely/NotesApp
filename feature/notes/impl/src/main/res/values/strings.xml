@@ -13,9 +13,12 @@
     <string name="note_title_placeholder">Заголовок вашей заметки</string>
     <string name="note_body_label">Текст заметки</string>
     <string name="note_save">Сохранить</string>
+    <string name="note_edit">Редактировать заметку</string>
     <string name="note_saving">Сохраняем заметку…</string>
     <string name="note_save_error">Не удалось сохранить заметку</string>
-    <string name="note_editor_loading">Готовим новую заметку…</string>
+    <string name="note_editor_loading_new">Готовим новую заметку…</string>
+    <string name="note_editor_loading_existing">Загружаем заметку…</string>
+    <string name="note_editor_not_found">Заметка не найдена</string>
     <string name="note_editor_error">Не удалось открыть редактор</string>
     <string name="note_generated_title_format">Заметка %1$d</string>
 </resources>
