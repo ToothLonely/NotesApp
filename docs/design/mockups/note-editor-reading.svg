@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="393" height="852" viewBox="0 0 393 852" role="img" aria-labelledby="title description">
+  <title id="title">Утверждённый режим чтения заметки</title>
+  <desc id="description">Светлый экран с кнопкой назад и заголовком на одной горизонтали, обычным текстом заметки и плавающей кнопкой редактирования.</desc>
+  <rect width="393" height="852" fill="#FBF8FC"/>
+  <g aria-label="Строка состояния" fill="#1B1B1F" font-family="Roboto, Arial, sans-serif" font-size="12" font-weight="600">
+    <text x="24" y="27">12:42</text>
+    <circle cx="340" cy="22" r="3"/>
+    <path d="M350 25v-6h3v6zm5 0v-9h3v9zm5 0V13h3v12z"/>
+    <rect x="370" y="17" width="12" height="9" rx="2" fill="none" stroke="#1B1B1F" stroke-width="1.5"/>
+    <rect x="382" y="20" width="2" height="3" rx="1"/>
+  </g>
+  <g aria-label="Назад" transform="translate(16 48)">
+    <rect width="48" height="48" rx="24" fill="transparent"/>
+    <path d="M30 15 21 24l9 9M22 24h17" fill="none" stroke="#1B1B1F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g font-family="Roboto, Arial, sans-serif" fill="#1B1B1F">
+    <text x="72" y="80" font-size="22" font-weight="600">Идеи для путешествия</text>
+    <text x="24" y="139" font-size="16" font-weight="400">
+      <tspan x="24" dy="0">Посмотреть старый город утром, затем пройти</tspan>
+      <tspan x="24" dy="25">вдоль набережной и найти небольшое кафе.</tspan>
+      <tspan x="24" dy="25">Забронировать билеты заранее.</tspan>
+      <tspan x="24" dy="42">Не забыть:</tspan>
+      <tspan x="24" dy="25">— зарядное устройство;</tspan>
+      <tspan x="24" dy="25">— удобную обувь;</tspan>
+      <tspan x="24" dy="25">— документы.</tspan>
+    </text>
+  </g>
+  <g aria-label="Редактировать заметку" transform="translate(313 748)">
+    <circle cx="28" cy="28" r="28" fill="#4F56A6"/>
+    <path d="m20 34 1.4-5.8L33.7 15.9a2.2 2.2 0 0 1 3.1 0l1.3 1.3a2.2 2.2 0 0 1 0 3.1L25.8 32.6 20 34Zm2.3-6.2 4 4M32.4 17.2l4.4 4.4" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <rect x="142" y="836" width="109" height="4" rx="2" fill="#1B1B1F"/>
+</svg>

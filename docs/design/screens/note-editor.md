@@ -4,9 +4,17 @@
 
 ## Назначение
 
-Один вложенный экран создаёт новую заметку и загружает существующую для просмотра/редактирования. Заголовок редактируется прямо в Top App Bar. Полностью пустая заметка не сохраняется: пользователь должен заполнить заголовок или текст; изображение опционально.
+Один вложенный экран создаёт новую заметку и загружает существующую для чтения и редактирования. Новая заметка сразу открывается в Creating, существующая — в Reading. FAB с карандашом переводит Reading в Editing без добавления нового navigation destination. Creating и Editing используют одинаковое редактируемое представление. Полностью пустая заметка не сохраняется: пользователь должен заполнить заголовок или текст; изображение опционально.
 
 ## Иерархия
+
+### Reading
+
+1. Top App Bar: Back и статический заголовок заметки на одной горизонтали.
+2. Прокручиваемый статический текст заметки без рамки, заливки, label или отдельного контейнера.
+3. Primary FAB с карандашом: «Редактировать заметку».
+
+### Creating и Editing
 
 1. Top App Bar: Back, optional attachment thumbnail, inline title, paperclip action.
 2. Многострочное поле «Текст заметки».
@@ -14,11 +22,31 @@
 4. Voice/status panel при активном сценарии.
 5. Primary-кнопка «Сохранить».
 
-Bottom Navigation отсутствует. Экран вертикально прокручивается, а Save остаётся последним элементом content и поднимается над IME.
+Bottom Navigation отсутствует. Экран вертикально прокручивается. В Reading FAB не перекрывает последние строки текста. В Creating и Editing Save остаётся последним элементом content и поднимается над IME.
 
 Геометрия следует обновлённой мягкой системе: body field и voice panel имеют радиус 24dp, icon actions, Voice FAB и Save — форму capsule/circle. Под изображение не резервируется место.
 
+В Reading используются те же типографические токены, что и в редактируемом представлении: `titleLarge` для заголовка и `bodyLarge` для текста. Размер шрифта при переключении режима не меняется.
+
 ## Wireframe
+
+### Reading
+
+```text
+┌──────────────────────────────────┐
+│ ←  Идеи для путешествия          │
+│                                  │
+│ Посмотреть старый город утром,   │
+│ затем пройти вдоль набережной.   │
+│ Забронировать билеты заранее.    │
+│                                  │
+│                           ( ✎ )  │
+└──────────────────────────────────┘
+```
+
+![Режим чтения заметки](../mockups/note-editor-reading.svg)
+
+### Creating и Editing
 
 ```text
 ┌──────────────────────────────────┐
@@ -39,8 +67,9 @@ Bottom Navigation отсутствует. Экран вертикально пр
 | --- | --- | --- |
 | Loading existing | top bar + skeleton/centered progress «Загружаем заметку…» | Back доступен, редактирование недоступно |
 | New content | серый placeholder «Заголовок вашей заметки» в app bar, пустой body, paperclip; image placeholder отсутствует; Save имеет disabled-оформление | ввод title/body, voice, attachment; Save становится доступна после заполнения любого из полей |
-| Existing content без изображения | сохранённый title обычным цветом, body и paperclip | все поля доступны |
-| Existing content с изображением | thumbnail рядом с Back, сохранённый title, paperclip | thumbnail открывает preview/actions |
+| Reading без изображения | Back и сохранённый title в Top App Bar; ниже обычный статический body; Edit FAB | Back возвращает в Notes, Edit FAB включает Editing |
+| Reading с изображением | Back, thumbnail и сохранённый title; ниже обычный статический body; Edit FAB | thumbnail открывает preview/actions, Edit FAB включает Editing |
+| Editing | то же редактируемое представление, что и New content, с загруженными title/body | Back отменяет несохранённые изменения и возвращает Reading; Save обновляет запись и возвращает Reading |
 | Image picking/camera | modal bottom sheet «Добавить изображение»: «Выбрать файл», «Сделать фото» | sheet закрывается после выбора или отмены |
 | Image attached | небольшая круглая thumbnail в app bar | tap: просмотреть, заменить или удалить |
 | Saving | progress внутри Save, поля и attachment actions временно disabled | Back не запускает второе сохранение |
@@ -49,6 +78,16 @@ Bottom Navigation отсутствует. Экран вертикально пр
 | Voice processing | Voice FAB disabled/progress + «Распознаём речь…» | поля видны; Save disabled до завершения |
 | Voice error | error panel с короткой причиной | «Записать снова» и закрыть |
 | Permission denied | пояснение рядом с вызвавшим действием | «Открыть настройки», если запрос больше нельзя показать |
+
+### Переходы Creating, Reading и Editing
+
+- `NoteEditorRoute(null)` открывает Creating. Успешный Save создаёт заметку и возвращает в Notes.
+- `NoteEditorRoute(noteId)` проходит Loading и открывает Reading.
+- Edit FAB переводит тот же route и ViewModel из Reading в Editing.
+- Back в Editing отменяет несохранённый ввод и восстанавливает последнее сохранённое Reading. Новый navigation entry не создаётся.
+- Ошибка обновления оставляет пользователя в Editing, сохраняет введённые данные и показывает retryable error banner.
+- Успешный Save в Editing обновляет существующую запись и сразу возвращает Reading с новыми title/body.
+- Back в Reading возвращает в Notes.
 
 ### Inline title и имя по умолчанию
 
@@ -92,11 +131,14 @@ feature/notes/impl/presentation/editor/
 |-- NoteEditorEvent.kt
 |-- screens/
 |   |-- NoteEditorScreen.kt
+|   |-- NoteEditorReadingScreen.kt
 |   |-- NoteEditorLoadingScreen.kt
 |   |-- NoteEditorErrorScreen.kt
 |   `-- NoteEditorContentScreen.kt
 `-- components/
     |-- NoteEditorTopBar.kt
+    |-- NoteReadingTopBar.kt
+    |-- EditNoteFab.kt
     |-- InlineNoteTitleField.kt
     |-- NoteBodyField.kt
     |-- EditorAttachmentThumbnail.kt
@@ -112,6 +154,9 @@ feature/notes/impl/presentation/editor/
 ## Accessibility и длинный текст
 
 - Inline title имеет label semantics «Заголовок заметки»; серый placeholder объявляется как подсказка, а не как уже введённый пользовательский текст.
+- В Reading title остаётся на одной горизонтали с Back, занимает оставшуюся ширину и обрезается ellipsis; полный title остаётся доступен accessibility services.
+- Статические title и body в Reading можно выделить и скопировать; пользовательские переносы строк сохраняются.
+- Edit FAB: «Редактировать заметку»; декоративная иконка карандаша не получает отдельное описание.
 - Back: «Назад»; paperclip: «Добавить изображение» или «Заменить изображение»; camera: «Сделать фото»; file: «Выбрать изображение»; mic сообщает recording state.
 - Voice FAB объявляется как «Начать голосовой ввод», «Остановить запись» или «Распознаём речь» в зависимости от состояния.
 - Высота body растёт до разумного минимума и затем прокручивает весь экран; системный font scale не ограничивается.
