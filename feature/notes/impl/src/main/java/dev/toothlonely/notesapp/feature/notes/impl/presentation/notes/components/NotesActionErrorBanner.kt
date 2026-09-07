@@ -20,7 +20,7 @@ import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
 
 @Composable
-fun NotesDeleteErrorBanner(
+fun NotesActionErrorBanner(
     message: String,
     retryLabel: String,
     dismissLabel: String,
@@ -64,10 +64,10 @@ fun NotesDeleteErrorBanner(
 
 @Preview(showBackground = true)
 @Composable
-private fun NotesDeleteErrorBannerPreview() {
+private fun NotesActionErrorBannerPreview() {
     NotesAppTheme {
-        NotesDeleteErrorBanner(
-            message = "Не удалось удалить заметку",
+        NotesActionErrorBanner(
+            message = "Не удалось сохранить режим отображения",
             retryLabel = "Повторить",
             dismissLabel = "Закрыть сообщение об ошибке",
             onRetry = {},
