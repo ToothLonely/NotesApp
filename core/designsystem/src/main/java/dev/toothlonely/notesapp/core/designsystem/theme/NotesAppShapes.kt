@@ -16,5 +16,6 @@ internal val NotesAppMaterialShapes = Shapes(
 
 object NotesAppShapes {
     val floating: Shape = RoundedCornerShape(36.dp)
+    val floatingNavigation: Shape = RoundedCornerShape(32.dp)
     val full: Shape = CircleShape
 }

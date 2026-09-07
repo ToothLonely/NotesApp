@@ -17,9 +17,13 @@ object NotesAppSizes {
     val editorAttachmentThumbnail = 40.dp
     val paletteSwatch = 48.dp
     val paletteTouchTarget = 64.dp
-    val floatingBottomNavigationHeight = 72.dp
-    val floatingBottomNavigationHorizontalMargin = 16.dp
+    val floatingBottomNavigationHeight = 64.dp
+    val floatingBottomNavigationSelectedItemHeight = 48.dp
+    val floatingBottomNavigationSelectedItemMaximumWidth = 88.dp
+    val floatingBottomNavigationHorizontalMargin = 32.dp
     val floatingBottomNavigationBottomGap = 12.dp
+    val floatingBottomNavigationElevation = 3.dp
+    val outlineWidth = 1.dp
     val compactScreenHorizontalPadding = 16.dp
     val adaptiveContentThreshold = 600.dp
     val maximumContentWidth = 720.dp

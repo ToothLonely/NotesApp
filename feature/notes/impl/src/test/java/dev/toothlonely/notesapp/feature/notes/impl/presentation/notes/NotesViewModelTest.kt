@@ -8,6 +8,7 @@ import dev.toothlonely.notesapp.feature.notes.impl.domain.usecase.NoteListProces
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NoteUpdate
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesSortOrder
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesViewMode
+import dev.toothlonely.notesapp.feature.notes.impl.navigation.NotesDestinationState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -124,6 +125,21 @@ class NotesViewModelTest {
 
         viewModel.toggleDeleteMode()
         runCurrent()
+        assertFalse(viewModel.state.value.isDeleteMode)
+    }
+
+    @Test
+    fun `top level destination deactivation exits delete mode`() = runTest {
+        val viewModel = createViewModel(FakeNotesRepository())
+        val destinationState = NotesDestinationState()
+        destinationState.attachDeactivationAction(viewModel::exitDeleteMode)
+        collectState(viewModel)
+
+        viewModel.toggleDeleteMode()
+        runCurrent()
+        destinationState.deactivate()
+        runCurrent()
+
         assertFalse(viewModel.state.value.isDeleteMode)
     }
 
