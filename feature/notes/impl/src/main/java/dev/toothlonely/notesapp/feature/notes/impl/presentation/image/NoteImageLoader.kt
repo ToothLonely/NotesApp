@@ -3,7 +3,7 @@ package dev.toothlonely.notesapp.feature.notes.impl.presentation.image
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageStorage
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NoteImageStorage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

@@ -1,13 +1,13 @@
 package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes
 
-import dev.toothlonely.notesapp.feature.notes.impl.FakeNotesRepository
-import dev.toothlonely.notesapp.feature.notes.impl.FakeNotesViewModeRepository
-import dev.toothlonely.notesapp.feature.notes.impl.MainDispatcherRule
-import dev.toothlonely.notesapp.feature.notes.impl.domain.Note
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteListProcessor
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteUpdate
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesSortOrder
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesViewMode
+import dev.toothlonely.notesapp.feature.notes.impl.testutil.FakeNotesRepository
+import dev.toothlonely.notesapp.feature.notes.impl.testutil.FakeNotesViewModeRepository
+import dev.toothlonely.notesapp.feature.notes.impl.testutil.MainDispatcherRule
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.Note
+import dev.toothlonely.notesapp.feature.notes.impl.domain.usecase.NoteListProcessor
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NoteUpdate
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesSortOrder
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesViewMode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async

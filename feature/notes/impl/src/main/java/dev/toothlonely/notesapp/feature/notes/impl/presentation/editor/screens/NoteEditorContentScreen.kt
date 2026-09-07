@@ -12,10 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteAttachmentErrorBanner
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteBodyField
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteSaveErrorBanner
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.SaveNoteButton
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.feedback.NoteAttachmentErrorBanner
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.field.NoteBodyField
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.feedback.NoteSaveErrorBanner
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.action.SaveNoteButton
 
 @Composable
 fun NoteEditorContentScreen(

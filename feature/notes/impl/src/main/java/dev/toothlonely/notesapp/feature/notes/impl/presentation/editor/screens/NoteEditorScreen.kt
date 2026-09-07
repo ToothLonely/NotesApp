@@ -18,16 +18,16 @@ import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
 import dev.toothlonely.notesapp.feature.notes.impl.R
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.CameraPermissionUiState
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.EditorImage
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.CameraPermissionUiState
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.EditorImage
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorAttachmentError
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorMode
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorMode
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorUiState
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorSaveError
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.CameraPermissionDialog
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.EditNoteFab
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteEditorTopBar
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteReadingTopBar
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.feedback.CameraPermissionDialog
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.action.EditNoteFab
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.topbar.NoteEditorTopBar
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.topbar.NoteReadingTopBar
 
 @Composable
 fun NoteEditorScreen(

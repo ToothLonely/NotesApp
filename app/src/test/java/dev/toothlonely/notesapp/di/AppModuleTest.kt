@@ -1,7 +1,7 @@
 package dev.toothlonely.notesapp.di
 
 import android.content.Context
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorArgs
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorArgs
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorViewModel
 import org.junit.Test
 import org.koin.core.annotation.KoinExperimentalAPI
