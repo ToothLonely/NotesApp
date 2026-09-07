@@ -14,3 +14,11 @@ internal val notesMigration1To2 = object : Migration(1, 2) {
         )
     }
 }
+
+internal val notesMigration2To3 = object : Migration(2, 3) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE notes ADD COLUMN image_file_name TEXT",
+        )
+    }
+}
