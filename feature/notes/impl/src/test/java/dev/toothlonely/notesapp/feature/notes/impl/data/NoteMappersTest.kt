@@ -17,6 +17,7 @@ class NoteMappersTest {
                 createdAtMillis = 123,
                 generatedTitleNumber = 7,
                 updatedAtMillis = 456,
+                imageFileName = "image.jpg",
             ),
             NoteEntity(
                 id = 5,
@@ -25,6 +26,7 @@ class NoteMappersTest {
                 createdAtMillis = 123,
                 generatedTitleNumber = 7,
                 updatedAtMillis = 456,
+                imageFileName = "image.jpg",
             ).asDomainModel(),
         )
     }
@@ -38,12 +40,16 @@ class NoteMappersTest {
                 createdAtMillis = 456,
                 generatedTitleNumber = 2,
                 updatedAtMillis = 456,
+                imageFileName = "image.jpg",
             ),
             NewNote(
                 title = "Заметка 2",
                 content = "",
                 generatedTitleNumber = 2,
-            ).asEntity(createdAtMillis = 456),
+            ).asEntity(
+                createdAtMillis = 456,
+                imageFileName = "image.jpg",
+            ),
         )
     }
 }

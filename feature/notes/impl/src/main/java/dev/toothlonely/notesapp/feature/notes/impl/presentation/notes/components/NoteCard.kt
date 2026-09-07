@@ -2,10 +2,8 @@ package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -15,22 +13,25 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import dev.toothlonely.notesapp.core.designsystem.icon.NotesAppIcons
+import dev.toothlonely.notesapp.core.designsystem.R as DesignSystemR
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
 import dev.toothlonely.notesapp.feature.notes.impl.domain.Note
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.image.StoredNoteImage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -45,6 +46,7 @@ fun NoteCard(
     isDeleting: Boolean,
     onOpen: () -> Unit,
     onDelete: () -> Unit,
+    loadImage: suspend (String, Boolean, Int, Int) -> ImageBitmap?,
     modifier: Modifier = Modifier,
 ) {
     val formattedDate = remember(note.createdAtMillis) {
@@ -73,27 +75,18 @@ fun NoteCard(
             horizontalArrangement = Arrangement.spacedBy(NotesAppSpacing.space3),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
+            StoredNoteImage(
+                fileName = note.imageFileName,
+                staged = false,
+                contentDescription = null,
+                loadImage = loadImage,
                 modifier = Modifier
                     .size(
                         width = NotesAppSizes.noteListPreviewWidth,
                         height = NotesAppSizes.noteListPreviewHeight,
-                    ),
-                shape = MaterialTheme.shapes.extraSmall,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = NotesAppIcons.Note,
-                        contentDescription = null,
-                        modifier = Modifier.size(NotesAppSizes.standardIcon),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-            }
+                    .clip(MaterialTheme.shapes.extraSmall),
+            )
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(NotesAppSpacing.space1),
@@ -125,7 +118,7 @@ fun NoteCard(
                         )
                     } else {
                         Icon(
-                            imageVector = NotesAppIcons.Delete,
+                            painter = painterResource(DesignSystemR.drawable.ic_delete_24),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.error,
                         )
@@ -148,6 +141,7 @@ private fun NoteCardPreview() {
             isDeleting = false,
             onOpen = {},
             onDelete = {},
+            loadImage = { _, _, _, _ -> null },
         )
     }
 }

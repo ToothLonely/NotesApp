@@ -5,4 +5,5 @@ data class NoteUpdate(
     val title: String,
     val content: String,
     val generatedTitleNumber: Int?,
+    val imageUpdate: NoteImageUpdate = NoteImageUpdate.Keep,
 )

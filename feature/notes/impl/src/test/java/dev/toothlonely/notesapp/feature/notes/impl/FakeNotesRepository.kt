@@ -3,6 +3,7 @@ package dev.toothlonely.notesapp.feature.notes.impl
 import dev.toothlonely.notesapp.feature.notes.impl.domain.NewNote
 import dev.toothlonely.notesapp.feature.notes.impl.domain.Note
 import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteUpdate
+import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageUpdate
 import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +24,7 @@ class FakeNotesRepository : NotesRepository {
     var deleteFailure: Throwable? = null
     var deleteGate: CompletableDeferred<Unit>? = null
     var currentTimeMillis = 1_000L
+    var cleanupCount = 0
 
     override fun observeNotes(): Flow<List<Note>> {
         observeFailure?.let { throw it }
@@ -59,6 +61,11 @@ class FakeNotesRepository : NotesRepository {
                     title = note.title,
                     content = note.content,
                     generatedTitleNumber = note.generatedTitleNumber,
+                    imageFileName = when (val imageUpdate = note.imageUpdate) {
+                        NoteImageUpdate.Keep -> existingNote.imageFileName
+                        NoteImageUpdate.Remove -> null
+                        is NoteImageUpdate.Replace -> imageUpdate.stagedFileName
+                    },
                     updatedAtMillis = currentTimeMillis,
                 )
             } else {
@@ -75,5 +82,9 @@ class FakeNotesRepository : NotesRepository {
         deletedNoteIds += noteId
         notes.value = notes.value.filterNot { it.id == noteId }
         return true
+    }
+
+    override suspend fun cleanupOrphanedImages() {
+        cleanupCount += 1
     }
 }

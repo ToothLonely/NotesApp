@@ -14,6 +14,12 @@ interface NotesDao {
     @Query("SELECT * FROM notes WHERE id = :noteId")
     fun observeNote(noteId: Long): Flow<NoteEntity?>
 
+    @Query("SELECT * FROM notes WHERE id = :noteId")
+    suspend fun getNote(noteId: Long): NoteEntity?
+
+    @Query("SELECT image_file_name FROM notes WHERE image_file_name IS NOT NULL")
+    suspend fun getImageFileNames(): List<String>
+
     @Insert
     suspend fun insert(note: NoteEntity): Long
 
@@ -23,7 +29,8 @@ interface NotesDao {
         SET title = :title,
             content = :content,
             generated_title_number = :generatedTitleNumber,
-            updated_at_millis = :updatedAtMillis
+            updated_at_millis = :updatedAtMillis,
+            image_file_name = :imageFileName
         WHERE id = :noteId
         """,
     )
@@ -33,6 +40,7 @@ interface NotesDao {
         content: String,
         generatedTitleNumber: Int?,
         updatedAtMillis: Long,
+        imageFileName: String?,
     ): Int
 
     @Query("DELETE FROM notes WHERE id = :noteId")

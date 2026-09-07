@@ -20,4 +20,6 @@ data class NoteEntity(
     val generatedTitleNumber: Int?,
     @ColumnInfo(name = "updated_at_millis", defaultValue = "0")
     val updatedAtMillis: Long = createdAtMillis,
+    @ColumnInfo(name = "image_file_name")
+    val imageFileName: String? = null,
 )

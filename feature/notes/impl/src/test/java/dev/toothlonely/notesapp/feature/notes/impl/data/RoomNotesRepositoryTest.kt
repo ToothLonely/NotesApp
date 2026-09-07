@@ -3,7 +3,9 @@ package dev.toothlonely.notesapp.feature.notes.impl.data
 import dev.toothlonely.notesapp.core.data.database.NotesDao
 import dev.toothlonely.notesapp.core.data.database.model.NoteEntity
 import dev.toothlonely.notesapp.feature.notes.impl.domain.NewNote
+import dev.toothlonely.notesapp.feature.notes.impl.FakeNoteImageStorage
 import dev.toothlonely.notesapp.feature.notes.impl.domain.Note
+import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageUpdate
 import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteUpdate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,11 +16,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class RoomNotesRepositoryTest {
-    private val dao = FakeNotesDao()
+    private val operationLog = mutableListOf<String>()
+    private val dao = FakeNotesDao(operationLog)
+    private val imageStorage = FakeNoteImageStorage(operationLog)
     private var currentTimeMillis = 123L
     private val repository = RoomNotesRepository(
         notesDao = dao,
         timeProvider = TimeProvider { currentTimeMillis },
+        imageStorage = imageStorage,
     )
 
     @Test
@@ -139,12 +144,231 @@ class RoomNotesRepositoryTest {
         assertEquals(listOf(2L), dao.notes.value.map(NoteEntity::id))
         assertEquals(false, repository.deleteNote(404))
     }
+
+    @Test
+    fun `create promotes staged image before persisting its file name`() = runTest {
+        val stagedFileName = imageStorage.nextStagedFileName
+
+        repository.createNote(
+            NewNote(
+                title = "С изображением",
+                content = "Текст",
+                generatedTitleNumber = null,
+                stagedImageFileName = stagedFileName,
+            ),
+        )
+
+        assertEquals(listOf(stagedFileName), imageStorage.promotedFileNames)
+        assertEquals(stagedFileName, dao.inserted.single().imageFileName)
+        assertEquals(
+            listOf("image:promote:$stagedFileName", "room:insert"),
+            operationLog,
+        )
+    }
+
+    @Test
+    fun `failed create removes newly promoted image`() = runTest {
+        val stagedFileName = imageStorage.nextStagedFileName
+        dao.insertFailure = IllegalStateException("Room write failed")
+
+        val result = runCatching {
+            repository.createNote(
+                NewNote(
+                    title = "С изображением",
+                    content = "",
+                    generatedTitleNumber = null,
+                    stagedImageFileName = stagedFileName,
+                ),
+            )
+        }
+
+        assertEquals(true, result.isFailure)
+        assertEquals(listOf(stagedFileName), imageStorage.deletedFileNames)
+    }
+
+    @Test
+    fun `replacement updates Room then removes old image`() = runTest {
+        val oldFileName = "00000000-0000-0000-0000-000000000010.jpg"
+        val newFileName = imageStorage.nextStagedFileName
+        dao.notes.value = listOf(
+            NoteEntity(
+                id = 9,
+                title = "Старая",
+                content = "Текст",
+                createdAtMillis = 100,
+                generatedTitleNumber = null,
+                imageFileName = oldFileName,
+            ),
+        )
+
+        assertEquals(
+            true,
+            repository.updateNote(
+                NoteUpdate(
+                    id = 9,
+                    title = "Новая",
+                    content = "Текст",
+                    generatedTitleNumber = null,
+                    imageUpdate = NoteImageUpdate.Replace(newFileName),
+                ),
+            ),
+        )
+
+        assertEquals(newFileName, dao.notes.value.single().imageFileName)
+        assertEquals(listOf(newFileName), imageStorage.promotedFileNames)
+        assertEquals(listOf(oldFileName), imageStorage.deletedFileNames)
+        assertEquals(
+            listOf(
+                "image:promote:$newFileName",
+                "room:update",
+                "image:delete:$oldFileName",
+            ),
+            operationLog,
+        )
+    }
+
+    @Test
+    fun `failed Room replacement removes new image and preserves old reference`() = runTest {
+        val oldFileName = "00000000-0000-0000-0000-000000000010.jpg"
+        val newFileName = imageStorage.nextStagedFileName
+        dao.notes.value = listOf(
+            NoteEntity(
+                id = 9,
+                title = "Старая",
+                content = "Текст",
+                createdAtMillis = 100,
+                generatedTitleNumber = null,
+                imageFileName = oldFileName,
+            ),
+        )
+        dao.updateFailure = IllegalStateException("Room write failed")
+
+        val result = runCatching {
+            repository.updateNote(
+                NoteUpdate(
+                    id = 9,
+                    title = "Новая",
+                    content = "Текст",
+                    generatedTitleNumber = null,
+                    imageUpdate = NoteImageUpdate.Replace(newFileName),
+                ),
+            )
+        }
+
+        assertEquals(true, result.isFailure)
+        assertEquals(oldFileName, dao.notes.value.single().imageFileName)
+        assertEquals(listOf(newFileName), imageStorage.deletedFileNames)
+    }
+
+    @Test
+    fun `removing attachment clears Room reference and removes old file`() = runTest {
+        val oldFileName = "00000000-0000-0000-0000-000000000010.jpg"
+        dao.notes.value = listOf(
+            NoteEntity(
+                id = 9,
+                title = "Заметка",
+                content = "Текст",
+                createdAtMillis = 100,
+                generatedTitleNumber = null,
+                imageFileName = oldFileName,
+            ),
+        )
+
+        repository.updateNote(
+            NoteUpdate(
+                id = 9,
+                title = "Заметка",
+                content = "Текст",
+                generatedTitleNumber = null,
+                imageUpdate = NoteImageUpdate.Remove,
+            ),
+        )
+
+        assertEquals(null, dao.notes.value.single().imageFileName)
+        assertEquals(listOf(oldFileName), imageStorage.deletedFileNames)
+        assertEquals(
+            listOf("room:update", "image:delete:$oldFileName"),
+            operationLog,
+        )
+    }
+
+    @Test
+    fun `deleting note removes its image after Room deletion`() = runTest {
+        val imageFileName = "00000000-0000-0000-0000-000000000010.jpg"
+        dao.notes.value = listOf(
+            NoteEntity(
+                id = 3,
+                title = "Заметка",
+                content = "",
+                createdAtMillis = 100,
+                generatedTitleNumber = null,
+                imageFileName = imageFileName,
+            ),
+        )
+
+        assertEquals(true, repository.deleteNote(3))
+
+        assertEquals(emptyList<NoteEntity>(), dao.notes.value)
+        assertEquals(listOf(imageFileName), imageStorage.deletedFileNames)
+        assertEquals(
+            listOf("room:delete", "image:delete:$imageFileName"),
+            operationLog,
+        )
+    }
+
+    @Test
+    fun `file deletion failure leaves Room deletion successful for later cleanup`() = runTest {
+        val imageFileName = "00000000-0000-0000-0000-000000000010.jpg"
+        dao.notes.value = listOf(
+            NoteEntity(
+                id = 3,
+                title = "Заметка",
+                content = "",
+                createdAtMillis = 100,
+                generatedTitleNumber = null,
+                imageFileName = imageFileName,
+            ),
+        )
+        imageStorage.deleteFailure = IllegalStateException("File is busy")
+
+        assertEquals(true, repository.deleteNote(3))
+        assertEquals(emptyList<NoteEntity>(), dao.notes.value)
+    }
+
+    @Test
+    fun `cleanup passes Room references and stale staging cutoff to storage`() = runTest {
+        dao.notes.value = listOf(
+            NoteEntity(
+                id = 3,
+                title = "Заметка",
+                content = "",
+                createdAtMillis = 100,
+                generatedTitleNumber = null,
+                imageFileName = "referenced.jpg",
+            ),
+        )
+        currentTimeMillis = 100_000_000L
+
+        repository.cleanupOrphanedImages()
+
+        assertEquals(
+            FakeNoteImageStorage.CleanupCall(
+                referencedFileNames = setOf("referenced.jpg"),
+                staleStagingCutoffMillis = 13_600_000L,
+            ),
+            imageStorage.cleanupCalls.single(),
+        )
+    }
 }
 
-private class FakeNotesDao : NotesDao {
+private class FakeNotesDao(
+    private val operationLog: MutableList<String>,
+) : NotesDao {
     val notes = MutableStateFlow<List<NoteEntity>>(emptyList())
     val inserted = mutableListOf<NoteEntity>()
     var nextNumber = 1
+    var insertFailure: Throwable? = null
+    var updateFailure: Throwable? = null
 
     override fun observeNotes(): Flow<List<NoteEntity>> = notes
 
@@ -152,7 +376,15 @@ private class FakeNotesDao : NotesDao {
         notes.find { it.id == noteId }
     }
 
+    override suspend fun getNote(noteId: Long): NoteEntity? =
+        notes.value.find { it.id == noteId }
+
+    override suspend fun getImageFileNames(): List<String> =
+        notes.value.mapNotNull(NoteEntity::imageFileName)
+
     override suspend fun insert(note: NoteEntity): Long {
+        insertFailure?.let { throw it }
+        operationLog += "room:insert"
         inserted += note
         return inserted.size.toLong()
     }
@@ -163,24 +395,29 @@ private class FakeNotesDao : NotesDao {
         content: String,
         generatedTitleNumber: Int?,
         updatedAtMillis: Long,
+        imageFileName: String?,
     ): Int {
+        updateFailure?.let { throw it }
+        operationLog += "room:update"
         val existing = notes.value.find { it.id == noteId } ?: return 0
-        notes.value = notes.value.map { note ->
-            if (note.id == noteId) {
+        notes.value = notes.value.map { storedNote ->
+            if (storedNote.id == noteId) {
                 existing.copy(
                     title = title,
                     content = content,
                     generatedTitleNumber = generatedTitleNumber,
                     updatedAtMillis = updatedAtMillis,
+                    imageFileName = imageFileName,
                 )
             } else {
-                note
+                storedNote
             }
         }
         return 1
     }
 
     override suspend fun delete(noteId: Long): Int {
+        operationLog += "room:delete"
         val newNotes = notes.value.filterNot { it.id == noteId }
         if (newNotes.size == notes.value.size) return 0
         notes.value = newNotes

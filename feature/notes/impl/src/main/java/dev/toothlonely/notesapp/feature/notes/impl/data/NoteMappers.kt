@@ -11,12 +11,17 @@ internal fun NoteEntity.asDomainModel(): Note = Note(
     createdAtMillis = createdAtMillis,
     generatedTitleNumber = generatedTitleNumber,
     updatedAtMillis = updatedAtMillis,
+    imageFileName = imageFileName,
 )
 
-internal fun NewNote.asEntity(createdAtMillis: Long): NoteEntity = NoteEntity(
+internal fun NewNote.asEntity(
+    createdAtMillis: Long,
+    imageFileName: String?,
+): NoteEntity = NoteEntity(
     title = title,
     content = content,
     createdAtMillis = createdAtMillis,
     generatedTitleNumber = generatedTitleNumber,
     updatedAtMillis = createdAtMillis,
+    imageFileName = imageFileName,
 )

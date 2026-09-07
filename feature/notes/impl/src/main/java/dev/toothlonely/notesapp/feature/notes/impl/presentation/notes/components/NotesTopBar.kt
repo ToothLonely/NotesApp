@@ -7,8 +7,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
-import dev.toothlonely.notesapp.core.designsystem.icon.NotesAppIcons
+import dev.toothlonely.notesapp.core.designsystem.R as DesignSystemR
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,7 +30,13 @@ fun NotesTopBar(
                 enabled = deleteActionEnabled,
             ) {
                 Icon(
-                    imageVector = if (isDeleteMode) NotesAppIcons.Close else NotesAppIcons.Delete,
+                    painter = painterResource(
+                        if (isDeleteMode) {
+                            DesignSystemR.drawable.ic_close_24
+                        } else {
+                            DesignSystemR.drawable.ic_delete_24
+                        },
+                    ),
                     contentDescription = if (isDeleteMode) {
                         exitDeleteModeLabel
                     } else {
