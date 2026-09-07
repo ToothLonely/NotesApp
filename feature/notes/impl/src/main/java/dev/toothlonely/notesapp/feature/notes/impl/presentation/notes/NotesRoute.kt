@@ -1,15 +1,18 @@
 package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.image.NoteImageLoader
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.toothlonely.notesapp.feature.notes.impl.R
+import dev.toothlonely.notesapp.feature.notes.impl.navigation.NotesDestinationState
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.screens.NotesScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -17,6 +20,8 @@ import org.koin.compose.koinInject
 
 @Composable
 fun NotesRoute(
+    bottomNavigationPadding: PaddingValues,
+    destinationState: NotesDestinationState,
     onCreateNote: () -> Unit,
     onOpenNote: (Long) -> Unit,
     viewModel: NotesViewModel = koinViewModel(),
@@ -25,6 +30,13 @@ fun NotesRoute(
     val state = viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val noteDeletedMessage = stringResource(R.string.notes_deleted)
+
+    DisposableEffect(viewModel, destinationState) {
+        val detachDeactivationAction = destinationState.attachDeactivationAction(
+            viewModel::exitDeleteMode,
+        )
+        onDispose(detachDeactivationAction)
+    }
 
     BackHandler(enabled = state.value.isDeleteMode) {
         viewModel.exitDeleteMode()
@@ -42,6 +54,7 @@ fun NotesRoute(
 
     NotesScreen(
         state = state.value,
+        bottomNavigationPadding = bottomNavigationPadding,
         onCreateNote = onCreateNote,
         onOpenNote = onOpenNote,
         onDraftQueryChange = viewModel::updateDraftQuery,

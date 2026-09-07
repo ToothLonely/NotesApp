@@ -119,7 +119,8 @@ Light и Dark — две реализации одной системы, а не
 | `medium` | 20dp | image preview и внутренние поверхности карточки |
 | `large` | 24dp | text field, task row и status panel |
 | `extraLarge` | 28dp | note card, balance/error card |
-| `floating` | 36dp | floating Bottom Navigation и крупный modal sheet |
+| `floatingNavigation` | 32dp | floating Bottom Navigation |
+| `floating` | 36dp | крупный modal sheet |
 | `full` | 50% | search, chips, одиночные кнопки, FAB, swatch и selected nav item |
 
 Карточки не используют случайные радиусы. Превью изображения обрезается `medium`-формой внутри `extraLarge`-карточки. Полное скругление применяется только к одноосным элементам; большие многострочные поля остаются скруглёнными прямоугольниками, чтобы не терять полезную площадь.
@@ -158,7 +159,7 @@ Light и Dark — две реализации одной системы, а не
 | Note grid preview | ширина карточки, aspect ratio 4:3 |
 | Editor attachment thumbnail | круг 40×40dp внутри touch target 48×48dp |
 | Palette swatch | 48×48dp; полная touch target минимум 64×64dp |
-| Floating Bottom Navigation | 72dp, радиус 36dp, horizontal margin 16dp |
+| Floating Bottom Navigation | 64dp, радиус 32dp, horizontal margin 32dp |
 | Зазор под Bottom Navigation | 12dp плюс системный navigation-bar inset |
 
 ## Глубина, обводки и motion

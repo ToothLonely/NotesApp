@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_placeholder_title">Раздел настроек готовится</string>
+    <string name="settings_placeholder_body">Тема, цветовая схема и баланс GigaChat появятся на следующем этапе.</string>
+</resources>

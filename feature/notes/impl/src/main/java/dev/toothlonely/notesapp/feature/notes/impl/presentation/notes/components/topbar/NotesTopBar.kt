@@ -7,7 +7,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import dev.toothlonely.notesapp.core.designsystem.R as DesignSystemR
 import dev.toothlonely.notesapp.core.designsystem.component.SortMenu
@@ -38,7 +41,12 @@ fun NotesTopBar(
     onToggleDeleteMode: () -> Unit,
 ) {
     TopAppBar(
-        title = { Text(text = title) },
+        title = {
+            Text(
+                text = title,
+                modifier = Modifier.semantics { heading() },
+            )
+        },
         actions = {
             SortMenu(
                 newestFirst = sortOrder == NotesSortOrder.NewestFirst,
