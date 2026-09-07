@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.tooling.preview.Preview
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
@@ -22,6 +23,7 @@ fun NotesListScreen(
     deletingNoteIds: Set<Long>,
     onOpenNote: (Long) -> Unit,
     onDeleteNote: (Long) -> Unit,
+    loadImage: suspend (String, Boolean, Int, Int) -> ImageBitmap?,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -41,6 +43,7 @@ fun NotesListScreen(
                 isDeleting = note.id in deletingNoteIds,
                 onOpen = { onOpenNote(note.id) },
                 onDelete = { onDeleteNote(note.id) },
+                loadImage = loadImage,
             )
         }
     }
@@ -61,6 +64,7 @@ private fun NotesListScreenPreview() {
             deletingNoteIds = emptySet(),
             onOpenNote = {},
             onDeleteNote = {},
+            loadImage = { _, _, _, _ -> null },
         )
     }
 }

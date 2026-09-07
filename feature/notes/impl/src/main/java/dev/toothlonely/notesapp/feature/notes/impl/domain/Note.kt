@@ -7,4 +7,5 @@ data class Note(
     val createdAtMillis: Long,
     val generatedTitleNumber: Int? = null,
     val updatedAtMillis: Long = createdAtMillis,
+    val imageFileName: String? = null,
 )

@@ -14,4 +14,6 @@ interface NotesRepository {
     suspend fun updateNote(note: NoteUpdate): Boolean
 
     suspend fun deleteNote(noteId: Long): Boolean
+
+    suspend fun cleanupOrphanedImages()
 }

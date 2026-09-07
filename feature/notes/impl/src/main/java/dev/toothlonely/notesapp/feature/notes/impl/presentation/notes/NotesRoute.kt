@@ -7,17 +7,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.image.NoteImageLoader
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.toothlonely.notesapp.feature.notes.impl.R
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.screens.NotesScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun NotesRoute(
     onCreateNote: () -> Unit,
     onOpenNote: (Long) -> Unit,
     viewModel: NotesViewModel = koinViewModel(),
+    imageLoader: NoteImageLoader = koinInject(),
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -46,6 +49,7 @@ fun NotesRoute(
         onRetryDelete = viewModel::retryDelete,
         onDismissDeleteError = viewModel::dismissDeleteError,
         onRetryLoading = viewModel::retryLoading,
+        loadImage = imageLoader::load,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     )
 }

@@ -47,6 +47,12 @@ class NotesViewModel(
         initialValue = NotesUiState(),
     )
 
+    init {
+        viewModelScope.launch {
+            runCatching { notesRepository.cleanupOrphanedImages() }
+        }
+    }
+
     fun retryLoading() {
         retryCount.update(Int::inc)
     }

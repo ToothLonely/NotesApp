@@ -32,6 +32,16 @@ class NotesViewModelTest {
     }
 
     @Test
+    fun `initialization requests orphan image cleanup`() = runTest {
+        val repository = FakeNotesRepository()
+
+        NotesViewModel(repository)
+        runCurrent()
+
+        assertEquals(1, repository.cleanupCount)
+    }
+
+    @Test
     fun `notes flow moves from loading to empty and content`() = runTest {
         val repository = FakeNotesRepository()
         val viewModel = NotesViewModel(repository)

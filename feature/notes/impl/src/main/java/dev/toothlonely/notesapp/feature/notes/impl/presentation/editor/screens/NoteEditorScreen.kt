@@ -11,14 +11,20 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
 import dev.toothlonely.notesapp.feature.notes.impl.R
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.CameraPermissionUiState
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.EditorImage
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorAttachmentError
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorMode
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorUiState
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorSaveError
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.CameraPermissionDialog
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.EditNoteFab
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteEditorTopBar
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteReadingTopBar
@@ -31,6 +37,14 @@ fun NoteEditorScreen(
     onSave: () -> Unit,
     onEdit: () -> Unit,
     onRetryPreparation: () -> Unit,
+    cameraPermissionState: CameraPermissionUiState,
+    loadImage: suspend (String, Boolean, Int, Int) -> ImageBitmap?,
+    onImageLoadError: (String, Boolean) -> Unit,
+    onAttachmentClick: () -> Unit,
+    onAttachmentThumbnailClick: () -> Unit,
+    onDismissAttachmentError: () -> Unit,
+    onCameraPermissionAction: () -> Unit,
+    onDismissCameraPermission: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -39,6 +53,37 @@ fun NoteEditorScreen(
     val titlePlaceholder =
         if (content == null || isReading) ""
         else stringResource(R.string.note_title_placeholder)
+    val attachmentErrorMessage = when (content?.attachmentError) {
+        NoteEditorAttachmentError.SelectedImageUnavailable ->
+            stringResource(R.string.note_image_source_error)
+        NoteEditorAttachmentError.StoredImageUnavailable ->
+            stringResource(R.string.note_image_read_error)
+        NoteEditorAttachmentError.InputTooLarge ->
+            stringResource(R.string.note_image_too_large_error)
+        NoteEditorAttachmentError.UnsupportedImage ->
+            stringResource(R.string.note_image_unsupported_error)
+        NoteEditorAttachmentError.WriteFailed ->
+            stringResource(R.string.note_image_write_error)
+        null -> null
+    }
+    val saveErrorMessage = when (content?.saveError) {
+        NoteEditorSaveError.Note -> stringResource(R.string.note_save_error)
+        NoteEditorSaveError.Image -> stringResource(R.string.note_image_save_error)
+        null -> stringResource(R.string.note_save_error)
+    }
+    val cameraPermissionMessage = when (cameraPermissionState) {
+        CameraPermissionUiState.Hidden -> null
+        CameraPermissionUiState.Denied ->
+            stringResource(R.string.note_camera_permission_denied)
+        CameraPermissionUiState.PermanentlyDenied ->
+            stringResource(R.string.note_camera_permission_permanently_denied)
+    }
+    val cameraPermissionActionLabel = when (cameraPermissionState) {
+        CameraPermissionUiState.Hidden -> null
+        CameraPermissionUiState.Denied -> stringResource(R.string.note_camera_permission_retry)
+        CameraPermissionUiState.PermanentlyDenied ->
+            stringResource(R.string.note_camera_permission_settings)
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -47,6 +92,16 @@ fun NoteEditorScreen(
             if (isReading) NoteReadingTopBar(
                 title = content.title,
                 backLabel = stringResource(R.string.note_editor_back),
+                attachmentThumbnailDescription =
+                    stringResource(R.string.note_attachment_thumbnail_description),
+                imageFileName = content.image?.fileName,
+                loadImage = loadImage,
+                onImageLoadError = {
+                    content.image?.let { image ->
+                        onImageLoadError(image.fileName, image is EditorImage.Staged)
+                    }
+                },
+                onAttachmentThumbnailClick = onAttachmentThumbnailClick,
                 onBack = onBack,
             )
             else NoteEditorTopBar(
@@ -54,8 +109,30 @@ fun NoteEditorScreen(
                 placeholder = titlePlaceholder,
                 titleLabel = stringResource(R.string.note_title_label),
                 backLabel = stringResource(R.string.note_editor_back),
-                enabled = content?.isSaving == false,
+                attachmentLabel = stringResource(
+                    if (content?.image == null) {
+                        R.string.note_add_image
+                    } else {
+                        R.string.note_replace_image
+                    },
+                ),
+                attachmentThumbnailDescription =
+                    stringResource(R.string.note_attachment_thumbnail_description),
+                imageFileName = content?.image?.fileName,
+                isImageStaged = content?.image is EditorImage.Staged,
+                enabled = content?.isSaving == false && content.isClosing.not(),
+                attachmentActionsEnabled = content?.isSaving == false &&
+                    content.isProcessingImage.not() &&
+                    content.isClosing.not(),
+                loadImage = loadImage,
+                onImageLoadError = {
+                    content?.image?.let { image ->
+                        onImageLoadError(image.fileName, image is EditorImage.Staged)
+                    }
+                },
                 onTitleChanged = onTitleChanged,
+                onAttachmentClick = onAttachmentClick,
+                onAttachmentThumbnailClick = onAttachmentThumbnailClick,
                 onBack = onBack,
             )
         },
@@ -98,6 +175,10 @@ fun NoteEditorScreen(
                 is NoteEditorUiState.Content -> when (state.mode) {
                     NoteEditorMode.Reading -> NoteEditorReadingScreen(
                         body = state.body,
+                        attachmentErrorMessage = attachmentErrorMessage,
+                        attachmentErrorDismissLabel =
+                            stringResource(R.string.note_image_error_dismiss),
+                        onDismissAttachmentError = onDismissAttachmentError,
                         modifier = Modifier
                             .widthIn(max = NotesAppSizes.maximumContentWidth)
                             .fillMaxSize()
@@ -111,13 +192,24 @@ fun NoteEditorScreen(
                         bodyLabel = stringResource(R.string.note_body_label),
                         saveLabel = stringResource(R.string.note_save),
                         savingLabel = stringResource(R.string.note_saving),
-                        saveErrorMessage = stringResource(R.string.note_save_error),
-                        retryLabel = stringResource(R.string.retry),
+                        saveErrorMessage = saveErrorMessage,
+                        saveRetryLabel = stringResource(R.string.retry),
+                        attachmentErrorMessage = attachmentErrorMessage,
+                        attachmentErrorDismissLabel =
+                            stringResource(R.string.note_image_error_dismiss),
+                        imageProcessingLabel =
+                            stringResource(
+                                if (state.isClosing) R.string.note_editor_closing
+                                else R.string.note_image_processing,
+                            ),
                         isSaving = state.isSaving,
-                        hasSaveError = state.hasSaveError,
+                        isClosing = state.isClosing,
+                        hasSaveError = state.saveError != null,
+                        isProcessingImage = state.isProcessingImage,
                         isSaveEnabled = state.isSaveEnabled,
                         onBodyChanged = onBodyChanged,
                         onSave = onSave,
+                        onDismissAttachmentError = onDismissAttachmentError,
                         modifier = Modifier
                             .widthIn(max = NotesAppSizes.maximumContentWidth)
                             .fillMaxSize()
@@ -128,6 +220,17 @@ fun NoteEditorScreen(
                 }
             }
         }
+    }
+
+    if (cameraPermissionMessage != null && cameraPermissionActionLabel != null) {
+        CameraPermissionDialog(
+            title = stringResource(R.string.note_camera_permission_dialog_title),
+            message = cameraPermissionMessage,
+            actionLabel = cameraPermissionActionLabel,
+            dismissLabel = stringResource(R.string.note_camera_permission_cancel),
+            onAction = onCameraPermissionAction,
+            onDismiss = onDismissCameraPermission,
+        )
     }
 }
 
@@ -147,6 +250,14 @@ private fun NoteEditorScreenPreview() {
             onSave = {},
             onEdit = {},
             onRetryPreparation = {},
+            cameraPermissionState = CameraPermissionUiState.Hidden,
+            loadImage = { _, _, _, _ -> null },
+            onImageLoadError = { _, _ -> },
+            onAttachmentClick = {},
+            onAttachmentThumbnailClick = {},
+            onDismissAttachmentError = {},
+            onCameraPermissionAction = {},
+            onDismissCameraPermission = {},
             onBack = {},
         )
     }

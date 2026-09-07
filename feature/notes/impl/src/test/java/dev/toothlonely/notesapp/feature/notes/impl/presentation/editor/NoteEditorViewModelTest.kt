@@ -1,14 +1,20 @@
 package dev.toothlonely.notesapp.feature.notes.impl.presentation.editor
 
 import dev.toothlonely.notesapp.feature.notes.impl.FakeNotesRepository
+import dev.toothlonely.notesapp.feature.notes.impl.FakeNoteImageStorage
 import dev.toothlonely.notesapp.feature.notes.impl.MainDispatcherRule
 import dev.toothlonely.notesapp.feature.notes.impl.domain.NewNote
 import dev.toothlonely.notesapp.feature.notes.impl.domain.Note
+import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageStorageException
+import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageStorageFailure
+import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageUpdate
 import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteUpdate
 import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteTitleGenerator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -23,7 +29,6 @@ class NoteEditorViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val titleGenerator = NoteTitleGenerator("Заметка %d")
-
     @Test
     fun `initial state is loading then new content is prepared`() = runTest {
         val viewModel = createViewModel(FakeNotesRepository())
@@ -143,7 +148,7 @@ class NoteEditorViewModelTest {
         assertEquals("Заголовок", state.title)
         assertEquals("Текст", state.body)
         assertFalse(state.isSaving)
-        assertTrue(state.hasSaveError)
+        assertEquals(NoteEditorSaveError.Note, state.saveError)
     }
 
     @Test
@@ -288,7 +293,7 @@ class NoteEditorViewModelTest {
         assertEquals(NoteEditorMode.Reading, state.mode)
         assertEquals("Заголовок", state.title)
         assertEquals("Текст", state.body)
-        assertFalse(state.hasSaveError)
+        assertEquals(null, state.saveError)
         assertTrue(repository.updatedNotes.isEmpty())
     }
 
@@ -408,7 +413,7 @@ class NoteEditorViewModelTest {
         assertEquals(NoteEditorMode.Editing, failedState.mode)
         assertEquals("Изменённый", failedState.title)
         assertEquals("Изменённый текст", failedState.body)
-        assertTrue(failedState.hasSaveError)
+        assertEquals(NoteEditorSaveError.Note, failedState.saveError)
         assertTrue(repository.createdNotes.isEmpty())
         assertEquals(900, repository.notes.value.single().updatedAtMillis)
 
@@ -426,12 +431,354 @@ class NoteEditorViewModelTest {
         )
     }
 
+    @Test
+    fun `selected image is staged and included when creating note`() = runTest {
+        val repository = FakeNotesRepository()
+        val imageStorage = FakeNoteImageStorage()
+        val viewModel = createViewModel(repository, imageStorage = imageStorage)
+        runCurrent()
+        viewModel.onTitleChanged("Заголовок")
+
+        viewModel.attachImage("content://picker/image")
+        runCurrent()
+
+        val attachedState = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals(
+            EditorImage.Staged(imageStorage.nextStagedFileName),
+            attachedState.image,
+        )
+        assertEquals(listOf("content://picker/image"), imageStorage.stagedSourceUris)
+
+        val event = async { viewModel.events.first() }
+        viewModel.save()
+        runCurrent()
+
+        assertEquals(NoteEditorEvent.SaveSucceeded, event.await())
+        assertEquals(
+            imageStorage.nextStagedFileName,
+            repository.createdNotes.single().stagedImageFileName,
+        )
+    }
+
+    @Test
+    fun `selecting a second image discards first staging file`() = runTest {
+        val imageStorage = FakeNoteImageStorage()
+        val viewModel = createViewModel(
+            repository = FakeNotesRepository(),
+            imageStorage = imageStorage,
+        )
+        runCurrent()
+        val firstFileName = imageStorage.nextStagedFileName
+        viewModel.attachImage("content://picker/first")
+        runCurrent()
+        imageStorage.nextStagedFileName = "00000000-0000-0000-0000-000000000002.jpg"
+
+        viewModel.attachImage("content://picker/second")
+        runCurrent()
+
+        val state = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals(EditorImage.Staged(imageStorage.nextStagedFileName), state.image)
+        assertEquals(listOf(firstFileName), imageStorage.discardedFileNames)
+    }
+
+    @Test
+    fun `saved image is loaded with existing note`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(
+                Note(
+                    id = 12,
+                    title = "С изображением",
+                    content = "Текст",
+                    createdAtMillis = 100,
+                    imageFileName = "saved.jpg",
+                ),
+            )
+        }
+
+        val viewModel = createViewModel(repository, noteId = 12)
+        runCurrent()
+
+        val state = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals(NoteEditorMode.Reading, state.mode)
+        assertEquals(EditorImage.Persisted("saved.jpg"), state.image)
+    }
+
+    @Test
+    fun `replacing existing image saves replacement and removes staged flag`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(
+                Note(2, "Заголовок", "Текст", 100, imageFileName = "old.jpg"),
+            )
+        }
+        val imageStorage = FakeNoteImageStorage()
+        val viewModel = createViewModel(repository, noteId = 2, imageStorage = imageStorage)
+        runCurrent()
+        viewModel.startEditing()
+
+        viewModel.attachImage("content://picker/replacement")
+        runCurrent()
+        viewModel.save()
+        runCurrent()
+
+        assertEquals(
+            NoteImageUpdate.Replace(imageStorage.nextStagedFileName),
+            repository.updatedNotes.single().imageUpdate,
+        )
+        val state = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals(NoteEditorMode.Reading, state.mode)
+        assertEquals(EditorImage.Persisted(imageStorage.nextStagedFileName), state.image)
+    }
+
+    @Test
+    fun `removing existing image saves removal`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(
+                Note(2, "Заголовок", "Текст", 100, imageFileName = "old.jpg"),
+            )
+        }
+        val viewModel = createViewModel(repository, noteId = 2)
+        runCurrent()
+        viewModel.startEditing()
+
+        viewModel.removeImage()
+        viewModel.save()
+        runCurrent()
+
+        assertEquals(NoteImageUpdate.Remove, repository.updatedNotes.single().imageUpdate)
+        assertEquals(null, repository.notes.value.single().imageFileName)
+        assertEquals(
+            null,
+            (viewModel.state.value as NoteEditorUiState.Content).image,
+        )
+    }
+
+    @Test
+    fun `cancelling replacement discards staged file and restores saved image`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(
+                Note(2, "Заголовок", "Текст", 100, imageFileName = "old.jpg"),
+            )
+        }
+        val imageStorage = FakeNoteImageStorage()
+        val viewModel = createViewModel(repository, noteId = 2, imageStorage = imageStorage)
+        runCurrent()
+        viewModel.startEditing()
+        viewModel.attachImage("content://picker/replacement")
+        runCurrent()
+
+        viewModel.cancelEditing()
+        runCurrent()
+
+        val state = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals(NoteEditorMode.Reading, state.mode)
+        assertEquals(EditorImage.Persisted("old.jpg"), state.image)
+        assertEquals(
+            listOf(imageStorage.nextStagedFileName),
+            imageStorage.discardedFileNames,
+        )
+        assertTrue(repository.updatedNotes.isEmpty())
+    }
+
+    @Test
+    fun `failure from cancelled editing image operation is ignored`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(
+                Note(2, "Заголовок", "Текст", 100, imageFileName = "old.jpg"),
+            )
+        }
+        val stageGate = CompletableDeferred<Unit>()
+        val imageStorage = FakeNoteImageStorage().apply {
+            this.stageGate = stageGate
+        }
+        val viewModel = createViewModel(repository, noteId = 2, imageStorage = imageStorage)
+        runCurrent()
+        viewModel.startEditing()
+        viewModel.attachImage("content://picker/replacement")
+        runCurrent()
+
+        viewModel.cancelEditing()
+        imageStorage.stageFailure =
+            NoteImageStorageException(NoteImageStorageFailure.UnsupportedImage)
+        stageGate.complete(Unit)
+        runCurrent()
+
+        val state = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals(NoteEditorMode.Reading, state.mode)
+        assertEquals(EditorImage.Persisted("old.jpg"), state.image)
+        assertEquals(null, state.attachmentError)
+        assertFalse(state.isProcessingImage)
+    }
+
+    @Test
+    fun `stale image load failure is ignored after editing is cancelled`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(
+                Note(2, "Заголовок", "Текст", 100, imageFileName = "old.jpg"),
+            )
+        }
+        val imageStorage = FakeNoteImageStorage()
+        val viewModel = createViewModel(repository, noteId = 2, imageStorage = imageStorage)
+        runCurrent()
+        viewModel.startEditing()
+        viewModel.attachImage("content://picker/replacement")
+        runCurrent()
+        val stagedFileName = imageStorage.nextStagedFileName
+        viewModel.cancelEditing()
+
+        viewModel.onImageLoadFailed(stagedFileName, staged = true)
+
+        val state = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals(NoteEditorMode.Reading, state.mode)
+        assertEquals(EditorImage.Persisted("old.jpg"), state.image)
+        assertEquals(null, state.attachmentError)
+    }
+
+    @Test
+    fun `image load failure distinguishes staged and persisted images`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(
+                Note(2, "Заголовок", "Текст", 100, imageFileName = "old.jpg"),
+            )
+        }
+        val imageStorage = FakeNoteImageStorage()
+        val viewModel = createViewModel(repository, noteId = 2, imageStorage = imageStorage)
+        runCurrent()
+
+        viewModel.onImageLoadFailed("old.jpg", staged = false)
+        assertEquals(
+            NoteEditorAttachmentError.StoredImageUnavailable,
+            (viewModel.state.value as NoteEditorUiState.Content).attachmentError,
+        )
+
+        viewModel.startEditing()
+        viewModel.attachImage("content://picker/replacement")
+        runCurrent()
+        viewModel.onImageLoadFailed(imageStorage.nextStagedFileName, staged = true)
+        assertEquals(
+            NoteEditorAttachmentError.SelectedImageUnavailable,
+            (viewModel.state.value as NoteEditorUiState.Content).attachmentError,
+        )
+    }
+
+    @Test
+    fun `image staging error keeps entered text and previous image`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(
+                Note(2, "Заголовок", "Текст", 100, imageFileName = "old.jpg"),
+            )
+        }
+        val imageStorage = FakeNoteImageStorage().apply {
+            stageFailure = NoteImageStorageException(NoteImageStorageFailure.UnsupportedImage)
+        }
+        val viewModel = createViewModel(repository, noteId = 2, imageStorage = imageStorage)
+        runCurrent()
+        viewModel.startEditing()
+        viewModel.onTitleChanged("Новый заголовок")
+        viewModel.onBodyChanged("Новый текст")
+
+        viewModel.attachImage("content://picker/not-image")
+        runCurrent()
+
+        val state = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals("Новый заголовок", state.title)
+        assertEquals("Новый текст", state.body)
+        assertEquals(EditorImage.Persisted("old.jpg"), state.image)
+        assertEquals(NoteEditorAttachmentError.UnsupportedImage, state.attachmentError)
+        assertFalse(state.isProcessingImage)
+    }
+
+    @Test
+    fun `image save error keeps text and restores persisted attachment`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(
+                Note(2, "Старый", "Старый текст", 100, imageFileName = "old.jpg"),
+            )
+            updateFailure = NoteImageStorageException(NoteImageStorageFailure.WriteFailed)
+        }
+        val imageStorage = FakeNoteImageStorage()
+        val viewModel = createViewModel(repository, noteId = 2, imageStorage = imageStorage)
+        runCurrent()
+        viewModel.startEditing()
+        viewModel.onTitleChanged("Новый")
+        viewModel.onBodyChanged("Новый текст")
+        viewModel.attachImage("content://picker/new")
+        runCurrent()
+
+        viewModel.save()
+        runCurrent()
+
+        val state = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals("Новый", state.title)
+        assertEquals("Новый текст", state.body)
+        assertEquals(EditorImage.Persisted("old.jpg"), state.image)
+        assertEquals(NoteEditorSaveError.Image, state.saveError)
+    }
+
+    @Test
+    fun `back from creation discards staged image before closing`() = runTest {
+        val repository = FakeNotesRepository()
+        val imageStorage = FakeNoteImageStorage()
+        val viewModel = createViewModel(repository, imageStorage = imageStorage)
+        runCurrent()
+        viewModel.attachImage("content://picker/new")
+        runCurrent()
+        val event = async { viewModel.events.first() }
+
+        viewModel.onBack()
+        runCurrent()
+
+        assertEquals(
+            listOf(imageStorage.nextStagedFileName),
+            imageStorage.discardedFileNames,
+        )
+        assertEquals(NoteEditorEvent.CloseEditor, event.await())
+        assertTrue(repository.createdNotes.isEmpty())
+    }
+
+    @Test
+    fun `back during image processing discards result before closing`() = runTest {
+        val repository = FakeNotesRepository()
+        val stageGate = CompletableDeferred<Unit>()
+        val imageStorage = FakeNoteImageStorage().apply {
+            this.stageGate = stageGate
+        }
+        val viewModel = createViewModel(repository, imageStorage = imageStorage)
+        runCurrent()
+        viewModel.onTitleChanged("До закрытия")
+        viewModel.attachImage("content://picker/new")
+        runCurrent()
+        val event = async { viewModel.events.first() }
+
+        viewModel.onBack()
+
+        val closingState = viewModel.state.value as NoteEditorUiState.Content
+        assertTrue(closingState.isClosing)
+        assertFalse(closingState.isSaveEnabled)
+        viewModel.onTitleChanged("После закрытия")
+        viewModel.onBodyChanged("Новый текст")
+        val stateAfterInput = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals("До закрытия", stateAfterInput.title)
+        assertEquals("", stateAfterInput.body)
+
+        stageGate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(imageStorage.nextStagedFileName),
+            imageStorage.discardedFileNames,
+        )
+        assertEquals(NoteEditorEvent.CloseEditor, event.await())
+        assertTrue(repository.createdNotes.isEmpty())
+    }
+
     private fun createViewModel(
         repository: FakeNotesRepository,
         noteId: Long? = null,
+        imageStorage: FakeNoteImageStorage = FakeNoteImageStorage(),
     ) = NoteEditorViewModel(
         args = NoteEditorArgs(noteId),
         notesRepository = repository,
         noteTitleGenerator = titleGenerator,
+        imageStorage = imageStorage,
     )
 }

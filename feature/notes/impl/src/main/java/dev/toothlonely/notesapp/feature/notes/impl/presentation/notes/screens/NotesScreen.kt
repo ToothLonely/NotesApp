@@ -13,9 +13,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import dev.toothlonely.notesapp.core.designsystem.icon.NotesAppIcons
+import dev.toothlonely.notesapp.core.designsystem.R as DesignSystemR
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppShapes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
@@ -37,6 +39,7 @@ fun NotesScreen(
     onRetryDelete: () -> Unit,
     onDismissDeleteError: () -> Unit,
     onRetryLoading: () -> Unit,
+    loadImage: suspend (String, Boolean, Int, Int) -> ImageBitmap?,
     snackbarHost: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -71,7 +74,7 @@ fun NotesScreen(
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
                     Icon(
-                        imageVector = NotesAppIcons.Add,
+                        painter = painterResource(DesignSystemR.drawable.ic_add_24),
                         contentDescription = stringResource(R.string.notes_create),
                     )
                 }
@@ -124,10 +127,6 @@ fun NotesScreen(
 
                         NotesContentState.Empty -> NotesEmptyScreen(
                             title = stringResource(R.string.notes_empty_title),
-                            description = stringResource(R.string.notes_empty_description),
-                            actionLabel = stringResource(R.string.notes_create),
-                            showCreateAction = !state.isDeleteMode,
-                            onCreateNote = onCreateNote,
                             modifier = screenModifier,
                         )
 
@@ -139,6 +138,7 @@ fun NotesScreen(
                             deletingNoteIds = state.deletingNoteIds,
                             onOpenNote = onOpenNote,
                             onDeleteNote = onDeleteNote,
+                            loadImage = loadImage,
                             modifier = screenModifier,
                         )
 
@@ -169,6 +169,7 @@ private fun NotesScreenPreview() {
             onRetryDelete = {},
             onDismissDeleteError = {},
             onRetryLoading = {},
+            loadImage = { _, _, _, _ -> null },
             snackbarHost = {},
         )
     }

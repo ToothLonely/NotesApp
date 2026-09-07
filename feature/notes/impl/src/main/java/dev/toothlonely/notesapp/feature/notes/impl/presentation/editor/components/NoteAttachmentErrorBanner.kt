@@ -1,4 +1,4 @@
-package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components
+package dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -20,11 +20,11 @@ import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
 
 @Composable
-fun NotesDeleteErrorBanner(
+fun NoteAttachmentErrorBanner(
     message: String,
-    retryLabel: String,
     dismissLabel: String,
-    onRetry: () -> Unit,
+    actionLabel: String?,
+    onAction: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -35,12 +35,7 @@ fun NotesDeleteErrorBanner(
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
     ) {
         Row(
-            modifier = Modifier.padding(
-                start = NotesAppSpacing.space4,
-                top = NotesAppSpacing.space2,
-                end = NotesAppSpacing.space2,
-                bottom = NotesAppSpacing.space2,
-            ),
+            modifier = Modifier.padding(NotesAppSpacing.space2),
             horizontalArrangement = Arrangement.spacedBy(NotesAppSpacing.space2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -49,8 +44,10 @@ fun NotesDeleteErrorBanner(
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            TextButton(onClick = onRetry) {
-                Text(text = retryLabel)
+            if (actionLabel != null) {
+                TextButton(onClick = onAction) {
+                    Text(actionLabel)
+                }
             }
             IconButton(onClick = onDismiss) {
                 Icon(
@@ -64,13 +61,13 @@ fun NotesDeleteErrorBanner(
 
 @Preview(showBackground = true)
 @Composable
-private fun NotesDeleteErrorBannerPreview() {
+private fun NoteAttachmentErrorBannerPreview() {
     NotesAppTheme {
-        NotesDeleteErrorBanner(
-            message = "Не удалось удалить заметку",
-            retryLabel = "Повторить",
-            dismissLabel = "Закрыть сообщение об ошибке",
-            onRetry = {},
+        NoteAttachmentErrorBanner(
+            message = "Не удалось прочитать изображение",
+            dismissLabel = "Закрыть сообщение",
+            actionLabel = "Повторить",
+            onAction = {},
             onDismiss = {},
         )
     }

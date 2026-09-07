@@ -5,8 +5,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
-import dev.toothlonely.notesapp.core.designsystem.icon.NotesAppIcons
+import dev.toothlonely.notesapp.core.designsystem.R as DesignSystemR
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
 
 @Composable
@@ -23,7 +24,7 @@ fun EditNoteFab(
         shape = MaterialTheme.shapes.extraLarge,
     ) {
         Icon(
-            imageVector = NotesAppIcons.Edit,
+            painter = painterResource(DesignSystemR.drawable.ic_edit_24),
             contentDescription = label,
         )
     }

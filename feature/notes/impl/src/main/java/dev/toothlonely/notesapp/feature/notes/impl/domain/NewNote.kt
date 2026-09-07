@@ -4,4 +4,5 @@ data class NewNote(
     val title: String,
     val content: String,
     val generatedTitleNumber: Int?,
+    val stagedImageFileName: String? = null,
 )

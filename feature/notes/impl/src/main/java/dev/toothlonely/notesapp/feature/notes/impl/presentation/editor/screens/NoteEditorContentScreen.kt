@@ -2,12 +2,17 @@ package dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteAttachmentErrorBanner
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteBodyField
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteSaveErrorBanner
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.SaveNoteButton
@@ -19,12 +24,18 @@ fun NoteEditorContentScreen(
     saveLabel: String,
     savingLabel: String,
     saveErrorMessage: String,
-    retryLabel: String,
+    saveRetryLabel: String,
+    attachmentErrorMessage: String?,
+    attachmentErrorDismissLabel: String,
+    imageProcessingLabel: String,
     isSaving: Boolean,
+    isClosing: Boolean,
     hasSaveError: Boolean,
+    isProcessingImage: Boolean,
     isSaveEnabled: Boolean,
     onBodyChanged: (String) -> Unit,
     onSave: () -> Unit,
+    onDismissAttachmentError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -34,14 +45,31 @@ fun NoteEditorContentScreen(
         if (hasSaveError) {
             NoteSaveErrorBanner(
                 message = saveErrorMessage,
-                retryLabel = retryLabel,
+                retryLabel = saveRetryLabel,
                 onRetry = onSave,
             )
+        }
+        if (attachmentErrorMessage != null) {
+            NoteAttachmentErrorBanner(
+                message = attachmentErrorMessage,
+                dismissLabel = attachmentErrorDismissLabel,
+                actionLabel = null,
+                onAction = {},
+                onDismiss = onDismissAttachmentError,
+            )
+        }
+        if (isProcessingImage) {
+            Text(
+                text = imageProcessingLabel,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
         NoteBodyField(
             body = body,
             label = bodyLabel,
-            enabled = !isSaving,
+            enabled = !isSaving && !isClosing,
             onBodyChanged = onBodyChanged,
             modifier = Modifier.weight(1f),
         )
@@ -66,12 +94,18 @@ private fun NoteEditorContentScreenPreview() {
             saveLabel = "Сохранить",
             savingLabel = "Сохраняем заметку…",
             saveErrorMessage = "Не удалось сохранить заметку",
-            retryLabel = "Повторить",
+            saveRetryLabel = "Повторить",
+            attachmentErrorMessage = null,
+            attachmentErrorDismissLabel = "Закрыть сообщение",
+            imageProcessingLabel = "Обрабатываем изображение…",
             isSaving = false,
+            isClosing = false,
             hasSaveError = false,
+            isProcessingImage = false,
             isSaveEnabled = true,
             onBodyChanged = {},
             onSave = {},
+            onDismissAttachmentError = {},
         )
     }
 }
