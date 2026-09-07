@@ -3,7 +3,9 @@ package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -17,6 +19,7 @@ import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components
 @Composable
 fun NotesListScreen(
     notes: List<Note>,
+    state: LazyListState,
     createdDateFormat: String,
     deleteDescription: (String) -> String,
     isDeleteMode: Boolean,
@@ -28,6 +31,7 @@ fun NotesListScreen(
 ) {
     LazyColumn(
         modifier = modifier,
+        state = state,
         contentPadding = PaddingValues(
             top = NotesAppSpacing.space4,
             bottom = NotesAppSizes.fab + NotesAppSpacing.space6,
@@ -56,8 +60,9 @@ private fun NotesListScreenPreview() {
         NotesListScreen(
             notes = listOf(
                 Note(1, "Первая заметка", "Текст", 1_750_000_000_000),
-                Note(1, "Первая заметка", "Текст", 1_750_000_000_000)
+                Note(2, "Вторая заметка", "Текст", 1_750_000_100_000),
             ),
+            state = rememberLazyListState(),
             createdDateFormat = "Создано %s",
             deleteDescription = { title -> "Удалить заметку «$title»" },
             isDeleteMode = true,
