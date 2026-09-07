@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="tasks_title">Задачи</string>
-    <string name="tasks_placeholder_title">Раздел задач готовится</string>
-    <string name="tasks_placeholder_body">Создание и управление задачами появятся на следующем этапе.</string>
+    <string name="tasks_loading">Загружаем задачи…</string>
+    <string name="tasks_empty_title">Задач пока нет</string>
+    <string name="tasks_empty_body">Добавьте задачу текстом</string>
+    <string name="tasks_load_error">Не удалось загрузить задачи</string>
+    <string name="tasks_retry">Повторить</string>
+    <string name="tasks_add">Добавить задачу</string>
+    <string name="tasks_title_placeholder">Название задачи</string>
+    <string name="tasks_title_empty_error">Введите название задачи</string>
+    <string name="tasks_create_storage_error">Не удалось сохранить задачу</string>
+    <string name="tasks_create_mode">Создание задачи</string>
+    <string name="tasks_confirm_create">Сохранить задачу</string>
+    <string name="tasks_cancel_create">Отменить создание задачи</string>
+    <string name="tasks_saving">Сохраняем задачу</string>
+    <string name="tasks_active_state">Активная</string>
+    <string name="tasks_completed_state">Выполненная</string>
+    <string name="tasks_active_content_description">%1$s, активная</string>
+    <string name="tasks_completed_content_description">%1$s, выполненная</string>
+    <string name="tasks_status_update_error">Не удалось изменить статус задачи</string>
+    <string name="tasks_dismiss_status_error">Закрыть сообщение об ошибке</string>
 </resources>

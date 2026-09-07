@@ -15,4 +15,13 @@ class NotesNavigationTest {
     fun `editor route without id represents new note`() {
         assertNull(NoteEditorRoute().noteId)
     }
+
+    @Test
+    fun `destination remembers the last handled room revision`() {
+        val destinationState = NotesDestinationState()
+
+        destinationState.markNotesRevisionHandled(7L)
+
+        assertEquals(7L, destinationState.handledNotesRevision)
+    }
 }

@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +63,8 @@ import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.screens.co
 fun NotesScreen(
     state: NotesUiState,
     bottomNavigationPadding: PaddingValues = PaddingValues(0.dp),
+    handledNotesRevision: Long,
+    onNotesRevisionHandled: (Long) -> Unit,
     onCreateNote: () -> Unit,
     onOpenNote: (Long) -> Unit,
     onDraftQueryChange: (String) -> Unit,
@@ -109,6 +112,22 @@ fun NotesScreen(
     LaunchedEffect(state.isDeleteMode) {
         if (!state.isDeleteMode) {
             isFabVisible = true
+        }
+    }
+    SideEffect {
+        if (shouldHandleNotesRevision(state.notesRevision, handledNotesRevision)) {
+            if (
+                shouldScrollNotesToStart(
+                    scrollToStartOnNotesRevision = state.scrollToStartOnNotesRevision,
+                    isNotesContentVisible = state.content is NotesContentState.Content,
+                )
+            ) {
+                when (state.viewMode) {
+                    NotesViewMode.List -> listState.requestScrollToItem(0)
+                    NotesViewMode.Grid -> gridState.requestScrollToItem(0)
+                }
+            }
+            onNotesRevisionHandled(state.notesRevision)
         }
     }
     Scaffold(
@@ -306,6 +325,8 @@ private fun NotesScreenPreview() {
     NotesAppTheme {
         NotesScreen(
             state = NotesUiState(content = NotesContentState.Empty),
+            handledNotesRevision = 0L,
+            onNotesRevisionHandled = {},
             onCreateNote = {},
             onOpenNote = {},
             onDraftQueryChange = {},
@@ -334,3 +355,13 @@ internal fun calculateFabVisibilityAfterScroll(
     scrollDelta > 0f -> true
     else -> currentVisibility
 }
+
+internal fun shouldScrollNotesToStart(
+    scrollToStartOnNotesRevision: Boolean,
+    isNotesContentVisible: Boolean,
+): Boolean = scrollToStartOnNotesRevision && isNotesContentVisible
+
+internal fun shouldHandleNotesRevision(
+    notesRevision: Long,
+    handledNotesRevision: Long,
+): Boolean = notesRevision != 0L && notesRevision != handledNotesRevision

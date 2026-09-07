@@ -55,6 +55,8 @@ fun NotesRoute(
     NotesScreen(
         state = state.value,
         bottomNavigationPadding = bottomNavigationPadding,
+        handledNotesRevision = destinationState.handledNotesRevision,
+        onNotesRevisionHandled = destinationState::markNotesRevisionHandled,
         onCreateNote = onCreateNote,
         onOpenNote = onOpenNote,
         onDraftQueryChange = viewModel::updateDraftQuery,

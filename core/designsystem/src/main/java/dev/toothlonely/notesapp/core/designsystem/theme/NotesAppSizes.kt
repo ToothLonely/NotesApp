@@ -15,6 +15,8 @@ object NotesAppSizes {
     val noteGridGap = 12.dp
     val noteGridMinimumCardWidth = 180.dp
     val editorAttachmentThumbnail = 40.dp
+    val taskRowMinimumHeight = 64.dp
+    val taskEditorFieldMinimumHeight = 56.dp
     val paletteSwatch = 48.dp
     val paletteTouchTarget = 64.dp
     val floatingBottomNavigationHeight = 64.dp

@@ -30,6 +30,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class NotesViewModel(
@@ -41,6 +43,8 @@ class NotesViewModel(
     private val retryCount = MutableStateFlow(0)
     private val controlsState = MutableStateFlow(NotesControlsState())
     private val eventChannel = Channel<NotesEvent>(capacity = Channel.BUFFERED)
+    private val lastObservedNotesCount = AtomicInteger(UNINITIALIZED_NOTES_COUNT)
+    private val notesRevision = AtomicLong(0L)
 
     val events: Flow<NotesEvent> = eventChannel.receiveAsFlow()
 
@@ -50,9 +54,11 @@ class NotesViewModel(
         notesViewModeRepository.observeViewMode().catch {
             emit(NotesViewMode.List)
         },
-    ) { content, controls, viewMode ->
+    ) { contentSnapshot, controls, viewMode ->
         NotesUiState(
-            content = content,
+            content = contentSnapshot.content,
+            notesRevision = contentSnapshot.notesRevision,
+            scrollToStartOnNotesRevision = contentSnapshot.scrollToStart,
             draftQuery = controls.draftQuery,
             appliedQuery = controls.appliedQuery,
             sortOrder = controls.sortOrder,
@@ -195,14 +201,22 @@ class NotesViewModel(
     private fun observeNotesLoadState(): Flow<NotesLoadState> = retryCount
         .flatMapLatest {
             flow { emitAll(notesRepository.observeNotes()) }
-                .map<List<Note>, NotesLoadState>(NotesLoadState::Loaded)
+                .map<List<Note>, NotesLoadState> { notes ->
+                    val previousNotesCount = lastObservedNotesCount.getAndSet(notes.size)
+                    NotesLoadState.Loaded(
+                        notes = notes,
+                        notesRevision = notesRevision.incrementAndGet(),
+                        scrollToStart = previousNotesCount != UNINITIALIZED_NOTES_COUNT &&
+                            notes.size >= previousNotesCount,
+                    )
+                }
                 .onStart { emit(NotesLoadState.Loading) }
                 .catch { emit(NotesLoadState.Error) }
         }
 
     private fun observeContentState(
         searchDispatcher: CoroutineDispatcher,
-    ): Flow<NotesContentState> = combine(
+    ): Flow<NotesContentSnapshot> = combine(
         observeNotesLoadState(),
         controlsState
             .map { controls ->
@@ -214,7 +228,11 @@ class NotesViewModel(
             .distinctUntilChanged(),
     ) { notesLoadState, searchCriteria -> notesLoadState to searchCriteria }
         .mapLatest { (notesLoadState, searchCriteria) ->
-            notesLoadState.toContentState(searchCriteria)
+            NotesContentSnapshot(
+                content = notesLoadState.toContentState(searchCriteria),
+                notesRevision = notesLoadState.notesRevision,
+                scrollToStart = notesLoadState.scrollToStart,
+            )
         }
         .flowOn(searchDispatcher)
 
@@ -241,10 +259,31 @@ class NotesViewModel(
         }
 
     private sealed interface NotesLoadState {
-        data object Loading : NotesLoadState
-        data object Error : NotesLoadState
-        data class Loaded(val notes: List<Note>) : NotesLoadState
+        val notesRevision: Long
+        val scrollToStart: Boolean
+
+        data object Loading : NotesLoadState {
+            override val notesRevision: Long = 0L
+            override val scrollToStart: Boolean = false
+        }
+
+        data object Error : NotesLoadState {
+            override val notesRevision: Long = 0L
+            override val scrollToStart: Boolean = false
+        }
+
+        data class Loaded(
+            val notes: List<Note>,
+            override val notesRevision: Long,
+            override val scrollToStart: Boolean,
+        ) : NotesLoadState
     }
+
+    private data class NotesContentSnapshot(
+        val content: NotesContentState,
+        val notesRevision: Long,
+        val scrollToStart: Boolean,
+    )
 
     private data class SearchCriteria(
         val appliedQuery: String,
@@ -263,6 +302,7 @@ class NotesViewModel(
     )
 
     private companion object {
+        const val UNINITIALIZED_NOTES_COUNT = -1
         const val STOP_TIMEOUT_MILLIS = 5_000L
     }
 }
