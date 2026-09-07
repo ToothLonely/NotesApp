@@ -15,7 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.NoteAttachmentErrorBanner
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.feedback.NoteAttachmentErrorBanner
 
 @Composable
 fun NoteEditorReadingScreen(

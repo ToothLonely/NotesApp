@@ -1,8 +1,8 @@
 package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes
 
-import dev.toothlonely.notesapp.feature.notes.impl.domain.Note
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesSortOrder
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesViewMode
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.Note
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesSortOrder
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesViewMode
 
 data class NotesUiState(
     val content: NotesContentState = NotesContentState.Loading,

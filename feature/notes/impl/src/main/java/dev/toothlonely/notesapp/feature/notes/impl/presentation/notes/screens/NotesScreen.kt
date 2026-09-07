@@ -26,14 +26,15 @@ import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
 import dev.toothlonely.notesapp.feature.notes.impl.R
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesSortOrder
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesViewMode
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesSortOrder
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesViewMode
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.NotesContentState
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.NotesUiState
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.DeleteModeBanner
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.NotesActionErrorBanner
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.NotesGrid
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.NotesTopBar
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.feedback.DeleteModeBanner
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.feedback.NotesActionErrorBanner
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.screens.content.NotesGrid
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.topbar.NotesTopBar
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.screens.content.NotesListScreen
 
 @Composable
 fun NotesScreen(

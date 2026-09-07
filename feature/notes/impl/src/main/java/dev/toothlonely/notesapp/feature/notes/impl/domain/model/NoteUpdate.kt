@@ -1,0 +1,9 @@
+package dev.toothlonely.notesapp.feature.notes.impl.domain.model
+
+data class NoteUpdate(
+    val id: Long,
+    val title: String,
+    val content: String,
+    val generatedTitleNumber: Int?,
+    val imageUpdate: NoteImageUpdate = NoteImageUpdate.Keep,
+)

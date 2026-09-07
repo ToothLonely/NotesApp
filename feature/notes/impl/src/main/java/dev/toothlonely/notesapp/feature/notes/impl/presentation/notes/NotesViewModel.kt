@@ -2,12 +2,12 @@ package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.toothlonely.notesapp.feature.notes.impl.domain.Note
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteListProcessor
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesRepository
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesSortOrder
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesViewMode
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesViewModeRepository
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.Note
+import dev.toothlonely.notesapp.feature.notes.impl.domain.usecase.NoteListProcessor
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NotesRepository
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesSortOrder
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesViewMode
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NotesViewModeRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

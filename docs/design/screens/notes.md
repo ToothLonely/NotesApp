@@ -106,14 +106,20 @@ feature/notes/impl/presentation/notes/
 |   |-- NotesLoadingScreen.kt
 |   |-- NotesEmptyScreen.kt
 |   |-- NotesErrorScreen.kt
-|   `-- NotesListScreen.kt
+|   |-- NotesSearchEmptyScreen.kt
+|   `-- content/
+|       |-- NotesListScreen.kt
+|       `-- NotesGrid.kt
 `-- components/
-    |-- NotesTopBar.kt
-    |-- NotesViewModeButton.kt
-    |-- NoteCard.kt
-    |-- NoteGridCard.kt
-    |-- NotesGrid.kt
-    `-- DeleteModeBanner.kt
+    |-- card/
+    |   |-- NoteCard.kt
+    |   `-- NoteGridCard.kt
+    |-- feedback/
+    |   |-- DeleteModeBanner.kt
+    |   `-- NotesActionErrorBanner.kt
+    `-- topbar/
+        |-- NotesTopBar.kt
+        `-- NotesViewModeButton.kt
 ```
 
 Переиспользуемые `AppSearchField`, `SortMenu`, `LoadingState` и базовый `ErrorState` проектируются в `core:designsystem`. Каждый production composable находится в отдельном файле.

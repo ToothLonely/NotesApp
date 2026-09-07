@@ -1,5 +1,8 @@
 package dev.toothlonely.notesapp.feature.notes.impl.presentation.editor
 
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.EditorImage
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorMode
+
 sealed interface NoteEditorUiState {
     data class Loading(
         val isExistingNote: Boolean,

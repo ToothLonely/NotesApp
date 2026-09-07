@@ -1,16 +1,16 @@
 package dev.toothlonely.notesapp.feature.notes.impl.di
 
 import dev.toothlonely.notesapp.feature.notes.impl.R
-import dev.toothlonely.notesapp.feature.notes.impl.data.AndroidNoteImageStorage
-import dev.toothlonely.notesapp.feature.notes.impl.data.DataStoreNotesViewModeRepository
-import dev.toothlonely.notesapp.feature.notes.impl.data.RoomNotesRepository
-import dev.toothlonely.notesapp.feature.notes.impl.data.TimeProvider
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteTitleGenerator
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageStorage
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteListProcessor
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesRepository
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesViewModeRepository
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorArgs
+import dev.toothlonely.notesapp.feature.notes.impl.data.image.AndroidNoteImageStorage
+import dev.toothlonely.notesapp.feature.notes.impl.data.preferences.DataStoreNotesViewModeRepository
+import dev.toothlonely.notesapp.feature.notes.impl.data.repository.RoomNotesRepository
+import dev.toothlonely.notesapp.feature.notes.impl.data.repository.TimeProvider
+import dev.toothlonely.notesapp.feature.notes.impl.domain.usecase.NoteTitleGenerator
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NoteImageStorage
+import dev.toothlonely.notesapp.feature.notes.impl.domain.usecase.NoteListProcessor
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NotesRepository
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NotesViewModeRepository
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorArgs
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorViewModel
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.image.NoteImageLoader
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.NotesViewModel

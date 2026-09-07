@@ -2,15 +2,18 @@ package dev.toothlonely.notesapp.feature.notes.impl.presentation.editor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NewNote
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageStorage
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageStorageException
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageStorageFailure
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageUpdate
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteTitleGenerator
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteUpdate
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NotesRepository
-import dev.toothlonely.notesapp.feature.notes.impl.domain.ResolvedNoteTitle
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NewNote
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NoteImageStorage
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NoteImageStorageException
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NoteImageStorageFailure
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NoteImageUpdate
+import dev.toothlonely.notesapp.feature.notes.impl.domain.usecase.NoteTitleGenerator
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NoteUpdate
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NotesRepository
+import dev.toothlonely.notesapp.feature.notes.impl.domain.usecase.ResolvedNoteTitle
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.EditorImage
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorArgs
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorMode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow

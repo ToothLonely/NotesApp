@@ -28,9 +28,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import dev.toothlonely.notesapp.feature.notes.impl.R
-import dev.toothlonely.notesapp.feature.notes.impl.domain.NoteImageStorage
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.ImageAttachmentActionsSheet
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.ImageSourceSheet
+import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NoteImageStorage
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.attachment.ImageAttachmentActionsSheet
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.attachment.ImageSourceSheet
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.CameraPermissionUiState
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.EditorImage
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorArgs
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorMode
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.screens.NoteEditorScreen
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.image.NoteImageLoader
 import kotlinx.coroutines.CancellationException
