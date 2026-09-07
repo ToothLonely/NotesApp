@@ -32,6 +32,10 @@ dependencies {
     implementation(project(":core:domain"))
     implementation(project(":feature:notes:api"))
     implementation(project(":feature:notes:impl"))
+    implementation(project(":feature:settings:api"))
+    implementation(project(":feature:settings:impl"))
+    implementation(project(":feature:tasks:api"))
+    implementation(project(":feature:tasks:impl"))
 
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)

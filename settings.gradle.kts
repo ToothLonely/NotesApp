@@ -34,4 +34,8 @@ include(
     ":core:domain",
     ":feature:notes:api",
     ":feature:notes:impl",
+    ":feature:settings:api",
+    ":feature:settings:impl",
+    ":feature:tasks:api",
+    ":feature:tasks:impl",
 )
