@@ -63,6 +63,51 @@ class NotesViewModelTest {
     }
 
     @Test
+    fun `creating note advances revision and requests scroll to start`() = runTest {
+        val repository = FakeNotesRepository()
+        val viewModel = createViewModel(repository)
+        collectState(viewModel)
+        runCurrent()
+        val initialRevision = viewModel.state.value.notesRevision
+
+        repository.notes.value = listOf(note(id = 1))
+        runCurrent()
+
+        assertTrue(viewModel.state.value.notesRevision > initialRevision)
+        assertTrue(viewModel.state.value.scrollToStartOnNotesRevision)
+    }
+
+    @Test
+    fun `editing note requests scroll to start`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(note(id = 1, updatedAtMillis = 1))
+        }
+        val viewModel = createViewModel(repository)
+        collectState(viewModel)
+        runCurrent()
+
+        repository.notes.value = listOf(note(id = 1, updatedAtMillis = 2))
+        runCurrent()
+
+        assertTrue(viewModel.state.value.scrollToStartOnNotesRevision)
+    }
+
+    @Test
+    fun `deleting note preserves current scroll position`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(note(id = 1), note(id = 2))
+        }
+        val viewModel = createViewModel(repository)
+        collectState(viewModel)
+        runCurrent()
+
+        repository.notes.value = listOf(note(id = 1))
+        runCurrent()
+
+        assertFalse(viewModel.state.value.scrollToStartOnNotesRevision)
+    }
+
+    @Test
     fun `most recently updated note moves to the start of the list`() = runTest {
         val repository = FakeNotesRepository().apply {
             notes.value = listOf(

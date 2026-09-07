@@ -6,6 +6,8 @@ import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesViewMode
 
 data class NotesUiState(
     val content: NotesContentState = NotesContentState.Loading,
+    val notesRevision: Long = 0L,
+    val scrollToStartOnNotesRevision: Boolean = false,
     val draftQuery: String = "",
     val appliedQuery: String = "",
     val sortOrder: NotesSortOrder = NotesSortOrder.NewestFirst,
