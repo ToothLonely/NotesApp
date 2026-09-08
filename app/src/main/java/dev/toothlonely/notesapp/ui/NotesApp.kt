@@ -1,6 +1,9 @@
 package dev.toothlonely.notesapp.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.runtime.CompositionLocalProvider
+import dev.toothlonely.notesapp.feature.notes.impl.navigation.LocalNoteTransitionScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -66,38 +69,42 @@ fun NotesApp(
         }
         val showBottomNavigation = navigationState.shouldShowBottomNavigation
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-        ) {
-            NavDisplay(
-                entries = navigationState.toEntries(entryProvider),
-                onBack = navigationState::goBack,
-                modifier = Modifier.fillMaxSize(),
-            )
-
-            if (showBottomNavigation) {
-                NotesBottomNavigationBar(
-                    selectedDestination = navigationState.selectedDestination,
-                    onSelectDestination = { destination ->
-                        navigationState.selectDestination(destination) { deactivatedDestination ->
-                            if (deactivatedDestination == AppDestination.Notes) {
-                                notesDestinationState.deactivate()
-                            }
-                        }
-                    },
+        SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+            CompositionLocalProvider(LocalNoteTransitionScope provides this) {
+                Box(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(
-                            horizontal = NotesAppSizes
-                                .floatingBottomNavigationHorizontalMargin,
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                ) {
+                    NavDisplay(
+                        entries = navigationState.toEntries(entryProvider),
+                        onBack = navigationState::goBack,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    if (showBottomNavigation) {
+                        NotesBottomNavigationBar(
+                            selectedDestination = navigationState.selectedDestination,
+                            onSelectDestination = { destination ->
+                                navigationState.selectDestination(destination) { deactivatedDestination ->
+                                    if (deactivatedDestination == AppDestination.Notes) {
+                                        notesDestinationState.deactivate()
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(
+                                    horizontal = NotesAppSizes
+                                        .floatingBottomNavigationHorizontalMargin,
+                                )
+                                .windowInsetsPadding(
+                                    WindowInsets.navigationBars.only(WindowInsetsSides.Bottom),
+                                )
+                                .padding(bottom = NotesAppSizes.floatingBottomNavigationBottomGap),
                         )
-                        .windowInsetsPadding(
-                            WindowInsets.navigationBars.only(WindowInsetsSides.Bottom),
-                        )
-                        .padding(bottom = NotesAppSizes.floatingBottomNavigationBottomGap),
-                )
+                    }
+                }
             }
         }
     }

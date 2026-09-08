@@ -609,21 +609,6 @@ class NoteEditorViewModel(
         }
     }
 
-    private data class PreparedNote(
-        val title: String,
-        val body: String,
-        val generatedTitleNumber: Int,
-        val resolvedGeneratedTitleNumber: Int?,
-        val image: EditorImage.Persisted?,
-    )
-
-    private data class SavedContent(
-        val title: String,
-        val body: String,
-        val resolvedGeneratedTitleNumber: Int?,
-        val image: EditorImage.Persisted?,
-    )
-
     private fun NoteEditorUiState.Content.asImageUpdate(): NoteImageUpdate = when (val image = image) {
         is EditorImage.Staged -> NoteImageUpdate.Replace(image.fileName)
         is EditorImage.Persisted -> NoteImageUpdate.Keep

@@ -4,8 +4,12 @@
     <string name="notes_delete_mode_title">Удаление заметок</string>
     <string name="notes_enter_delete_mode">Включить режим удаления</string>
     <string name="notes_exit_delete_mode">Выйти из режима удаления</string>
-    <string name="notes_delete_mode_banner">Нажмите значок удаления на нужной заметке</string>
     <string name="notes_delete_note">Удалить заметку «%1$s»</string>
+    <string name="notes_delete_dialog_title">Удалить заметку?</string>
+    <string name="notes_delete_dialog_message">Заметка «%1$s» будет удалена.</string>
+    <string name="notes_delete_cancel">Отмена</string>
+    <string name="notes_delete">Удалить</string>
+    <string name="notes_deleting">Удаляем заметку</string>
     <string name="notes_delete_error">Не удалось удалить заметку</string>
     <string name="notes_dismiss_delete_error">Закрыть сообщение об ошибке</string>
     <string name="notes_deleted">Заметка удалена</string>
@@ -34,6 +38,8 @@
     <string name="note_body_label">Текст заметки</string>
     <string name="note_save">Сохранить</string>
     <string name="note_edit">Редактировать заметку</string>
+    <string name="note_share">Поделиться заметкой</string>
+    <string name="note_share_chooser_title">Поделиться заметкой через</string>
     <string name="note_saving">Сохраняем заметку…</string>
     <string name="note_editor_closing">Закрываем редактор…</string>
     <string name="note_save_error">Не удалось сохранить заметку</string>

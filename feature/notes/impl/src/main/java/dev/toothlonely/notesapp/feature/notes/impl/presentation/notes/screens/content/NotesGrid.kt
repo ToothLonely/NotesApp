@@ -28,7 +28,7 @@ fun NotesGrid(
     isDeleteMode: Boolean,
     deletingNoteIds: Set<Long>,
     onOpenNote: (Long) -> Unit,
-    onDeleteNote: (Long) -> Unit,
+    onDeleteNote: (Long, String) -> Unit,
     loadImage: suspend (String, Boolean, Int, Int) -> ImageBitmap?,
     bottomContentPadding: Dp = 0.dp,
     modifier: Modifier = Modifier,
@@ -57,7 +57,7 @@ fun NotesGrid(
                     isDeleteMode = isDeleteMode,
                     isDeleting = note.id in deletingNoteIds,
                     onOpen = { onOpenNote(note.id) },
-                    onDelete = { onDeleteNote(note.id) },
+                    onDelete = { onDeleteNote(note.id, note.title) },
                     loadImage = loadImage,
                 )
             }
@@ -82,7 +82,7 @@ private fun NotesGridPreview() {
             isDeleteMode = true,
             deletingNoteIds = emptySet(),
             onOpenNote = {},
-            onDeleteNote = {},
+            onDeleteNote = { _, _ -> },
             loadImage = { _, _, _, _ -> null },
         )
     }

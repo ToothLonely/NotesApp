@@ -189,7 +189,7 @@ class NotesViewModelTest {
     }
 
     @Test
-    fun `note remains visible until delete succeeds then last note moves list to empty`() = runTest {
+    fun `delete request keeps note until confirmation and success moves last note to empty`() = runTest {
         val gate = CompletableDeferred<Unit>()
         val repository = FakeNotesRepository().apply {
             notes.value = listOf(note(id = 9))
@@ -201,7 +201,17 @@ class NotesViewModelTest {
         viewModel.toggleDeleteMode()
         val event = async { viewModel.events.first() }
 
-        viewModel.deleteNote(9)
+        viewModel.requestDeleteNote(noteId = 9, noteTitle = "Заметка 9")
+        runCurrent()
+
+        assertEquals(emptyList<Long>(), repository.deletedNoteIds)
+        assertEquals(
+            DeleteNoteConfirmationUiState(noteId = 9, noteTitle = "Заметка 9"),
+            viewModel.state.value.deleteConfirmation,
+        )
+        assertTrue(viewModel.state.value.deletingNoteIds.isEmpty())
+
+        viewModel.confirmDeleteNote()
         runCurrent()
 
         assertEquals(
@@ -209,6 +219,7 @@ class NotesViewModelTest {
             viewModel.state.value.content,
         )
         assertEquals(setOf(9L), viewModel.state.value.deletingNoteIds)
+        assertEquals(true, viewModel.state.value.deleteConfirmation?.isDeleting)
 
         gate.complete(Unit)
         runCurrent()
@@ -216,7 +227,27 @@ class NotesViewModelTest {
         assertEquals(NotesEvent.NoteDeleted, event.await())
         assertEquals(listOf(9L), repository.deletedNoteIds)
         assertEquals(NotesContentState.Empty, viewModel.state.value.content)
+        assertEquals(null, viewModel.state.value.deleteConfirmation)
         assertTrue(viewModel.state.value.deletingNoteIds.isEmpty())
+    }
+
+    @Test
+    fun `cancelling delete confirmation leaves note untouched`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = listOf(note(id = 7))
+        }
+        val viewModel = createViewModel(repository)
+        collectState(viewModel)
+        runCurrent()
+        viewModel.toggleDeleteMode()
+
+        viewModel.requestDeleteNote(noteId = 7, noteTitle = "Заметка 7")
+        viewModel.cancelDeleteNote()
+        runCurrent()
+
+        assertEquals(null, viewModel.state.value.deleteConfirmation)
+        assertEquals(listOf(7L), repository.notes.value.map(Note::id))
+        assertEquals(emptyList<Long>(), repository.deletedNoteIds)
     }
 
     @Test
@@ -230,10 +261,12 @@ class NotesViewModelTest {
         runCurrent()
         viewModel.toggleDeleteMode()
 
-        viewModel.deleteNote(4)
+        viewModel.requestDeleteNote(noteId = 4, noteTitle = "Заметка 4")
+        viewModel.confirmDeleteNote()
         runCurrent()
 
         assertEquals(listOf(4L), repository.notes.value.map(Note::id))
+        assertEquals(null, viewModel.state.value.deleteConfirmation)
         assertEquals(4L, viewModel.state.value.failedDeleteNoteId)
         assertTrue(viewModel.state.value.isDeleteMode)
 

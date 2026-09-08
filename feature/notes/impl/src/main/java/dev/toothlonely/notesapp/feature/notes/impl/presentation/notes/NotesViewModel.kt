@@ -66,6 +66,7 @@ class NotesViewModel(
             isViewModeSaving = controls.isViewModeSaving,
             hasViewModeSaveError = controls.failedViewMode != null,
             isDeleteMode = controls.isDeleteMode,
+            deleteConfirmation = controls.deleteConfirmation,
             deletingNoteIds = controls.deletingNoteIds,
             failedDeleteNoteId = controls.failedDeleteNoteId,
         )
@@ -147,6 +148,7 @@ class NotesViewModel(
         controlsState.update { state ->
             state.copy(
                 isDeleteMode = !state.isDeleteMode,
+                deleteConfirmation = null,
                 failedDeleteNoteId = null,
             )
         }
@@ -156,12 +158,54 @@ class NotesViewModel(
         controlsState.update { state ->
             state.copy(
                 isDeleteMode = false,
+                deleteConfirmation = null,
                 failedDeleteNoteId = null,
             )
         }
     }
 
-    fun deleteNote(noteId: Long) {
+    fun requestDeleteNote(noteId: Long, noteTitle: String) {
+        val currentState = controlsState.value
+        if (
+            !currentState.isDeleteMode ||
+            currentState.deleteConfirmation != null ||
+            noteId in currentState.deletingNoteIds
+        ) {
+            return
+        }
+
+        controlsState.update { state ->
+            state.copy(
+                deleteConfirmation = DeleteNoteConfirmationUiState(
+                    noteId = noteId,
+                    noteTitle = noteTitle,
+                ),
+                failedDeleteNoteId = null,
+            )
+        }
+    }
+
+    fun cancelDeleteNote() {
+        controlsState.update { state ->
+            if (state.deleteConfirmation?.isDeleting == true) state
+            else state.copy(deleteConfirmation = null)
+        }
+    }
+
+    fun confirmDeleteNote() {
+        val confirmation = controlsState.value.deleteConfirmation ?: return
+        if (confirmation.isDeleting) return
+
+        controlsState.update { state ->
+            state.copy(
+                deleteConfirmation = state.deleteConfirmation?.copy(isDeleting = true),
+                failedDeleteNoteId = null,
+            )
+        }
+        deleteNote(confirmation.noteId)
+    }
+
+    private fun deleteNote(noteId: Long) {
         val currentState = controlsState.value
         if (!currentState.isDeleteMode || noteId in currentState.deletingNoteIds) return
 
@@ -172,21 +216,26 @@ class NotesViewModel(
             )
         }
         viewModelScope.launch {
-            runCatching { check(notesRepository.deleteNote(noteId)) }
-                .onSuccess {
-                    controlsState.update { state ->
-                        state.copy(deletingNoteIds = state.deletingNoteIds - noteId)
-                    }
-                    eventChannel.send(NotesEvent.NoteDeleted)
+            try {
+                check(notesRepository.deleteNote(noteId))
+                controlsState.update { state ->
+                    state.copy(
+                        deleteConfirmation = null,
+                        deletingNoteIds = state.deletingNoteIds - noteId,
+                    )
                 }
-                .onFailure {
-                    controlsState.update { state ->
-                        state.copy(
-                            deletingNoteIds = state.deletingNoteIds - noteId,
-                            failedDeleteNoteId = noteId.takeIf { state.isDeleteMode },
-                        )
-                    }
+                eventChannel.send(NotesEvent.NoteDeleted)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                controlsState.update { state ->
+                    state.copy(
+                        deleteConfirmation = null,
+                        deletingNoteIds = state.deletingNoteIds - noteId,
+                        failedDeleteNoteId = noteId.takeIf { state.isDeleteMode },
+                    )
                 }
+            }
         }
     }
 
@@ -257,49 +306,6 @@ class NotesViewModel(
                 }
             }
         }
-
-    private sealed interface NotesLoadState {
-        val notesRevision: Long
-        val scrollToStart: Boolean
-
-        data object Loading : NotesLoadState {
-            override val notesRevision: Long = 0L
-            override val scrollToStart: Boolean = false
-        }
-
-        data object Error : NotesLoadState {
-            override val notesRevision: Long = 0L
-            override val scrollToStart: Boolean = false
-        }
-
-        data class Loaded(
-            val notes: List<Note>,
-            override val notesRevision: Long,
-            override val scrollToStart: Boolean,
-        ) : NotesLoadState
-    }
-
-    private data class NotesContentSnapshot(
-        val content: NotesContentState,
-        val notesRevision: Long,
-        val scrollToStart: Boolean,
-    )
-
-    private data class SearchCriteria(
-        val appliedQuery: String,
-        val sortOrder: NotesSortOrder,
-    )
-
-    private data class NotesControlsState(
-        val draftQuery: String = "",
-        val appliedQuery: String = "",
-        val sortOrder: NotesSortOrder = NotesSortOrder.NewestFirst,
-        val isViewModeSaving: Boolean = false,
-        val failedViewMode: NotesViewMode? = null,
-        val isDeleteMode: Boolean = false,
-        val deletingNoteIds: Set<Long> = emptySet(),
-        val failedDeleteNoteId: Long? = null,
-    )
 
     private companion object {
         const val UNINITIALIZED_NOTES_COUNT = -1

@@ -15,6 +15,7 @@ data class NotesUiState(
     val isViewModeSaving: Boolean = false,
     val hasViewModeSaveError: Boolean = false,
     val isDeleteMode: Boolean = false,
+    val deleteConfirmation: DeleteNoteConfirmationUiState? = null,
     val deletingNoteIds: Set<Long> = emptySet(),
     val failedDeleteNoteId: Long? = null,
 )

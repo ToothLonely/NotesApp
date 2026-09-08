@@ -39,6 +39,7 @@ fun NoteEditorScreen(
     onBodyChanged: (String) -> Unit,
     onSave: () -> Unit,
     onEdit: () -> Unit,
+    onShare: () -> Unit,
     onRetryPreparation: () -> Unit,
     cameraPermissionState: CameraPermissionUiState,
     loadImage: suspend (String, Boolean, Int, Int) -> ImageBitmap?,
@@ -100,6 +101,7 @@ fun NoteEditorScreen(
             if (isReading) NoteReadingTopBar(
                 title = content.title,
                 backLabel = stringResource(R.string.note_editor_back),
+                shareLabel = stringResource(R.string.note_share),
                 attachmentThumbnailDescription =
                     stringResource(R.string.note_attachment_thumbnail_description),
                 imageFileName = content.image?.fileName,
@@ -110,6 +112,7 @@ fun NoteEditorScreen(
                     }
                 },
                 onAttachmentThumbnailClick = onAttachmentThumbnailClick,
+                onShare = onShare,
                 onBack = onBack,
             )
             else NoteEditorTopBar(
@@ -285,6 +288,7 @@ private fun NoteEditorScreenPreview() {
             onBodyChanged = {},
             onSave = {},
             onEdit = {},
+            onShare = {},
             onRetryPreparation = {},
             cameraPermissionState = CameraPermissionUiState.Hidden,
             loadImage = { _, _, _, _ -> null },
