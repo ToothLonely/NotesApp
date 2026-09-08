@@ -24,11 +24,13 @@ import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.component
 fun NoteReadingTopBar(
     title: String,
     backLabel: String,
+    shareLabel: String,
     attachmentThumbnailDescription: String,
     imageFileName: String?,
     loadImage: suspend (String, Boolean, Int, Int) -> ImageBitmap?,
     onImageLoadError: () -> Unit,
     onAttachmentThumbnailClick: () -> Unit,
+    onShare: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -65,6 +67,14 @@ fun NoteReadingTopBar(
                 }
             }
         },
+        actions = {
+            IconButton(onClick = onShare) {
+                Icon(
+                    painter = painterResource(DesignSystemR.drawable.ic_share_24),
+                    contentDescription = shareLabel,
+                )
+            }
+        },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.background,
         ),
@@ -78,12 +88,14 @@ private fun NoteReadingTopBarPreview() {
         NoteReadingTopBar(
             title = "Идеи для путешествия",
             backLabel = "Назад",
+            shareLabel = "Поделиться заметкой",
             attachmentThumbnailDescription =
                 "Прикреплённое изображение. Открыть действия",
             imageFileName = null,
             loadImage = { _, _, _, _ -> null },
             onImageLoadError = {},
             onAttachmentThumbnailClick = {},
+            onShare = {},
             onBack = {},
         )
     }

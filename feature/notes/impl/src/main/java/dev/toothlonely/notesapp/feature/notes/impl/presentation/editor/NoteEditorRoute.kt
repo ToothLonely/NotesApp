@@ -23,6 +23,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Modifier
+import dev.toothlonely.notesapp.feature.notes.impl.navigation.noteContainerTransition
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -64,6 +66,7 @@ fun NoteEditorRoute(
     val state = viewModel.state.collectAsStateWithLifecycle()
     val content = state.value as? NoteEditorUiState.Content
     val snackbarHostState = remember { SnackbarHostState() }
+    val shareChooserTitle = stringResource(R.string.note_share_chooser_title)
     val voiceError = content?.voiceInput as? NoteVoiceInputUiState.Error
     val voiceErrorMessage = voiceError?.let { error ->
         stringResource(error.failure.messageResource)
@@ -218,11 +221,21 @@ fun NoteEditorRoute(
     }
 
     NoteEditorScreen(
+        modifier = Modifier.noteContainerTransition(noteId, isEditor = true),
         state = state.value,
         onTitleChanged = viewModel::onTitleChanged,
         onBodyChanged = viewModel::onBodyChanged,
         onSave = viewModel::save,
         onEdit = viewModel::startEditing,
+        onShare = {
+            content?.let { note ->
+                context.shareNote(
+                    title = note.title,
+                    body = note.body,
+                    chooserTitle = shareChooserTitle,
+                )
+            }
+        },
         onRetryPreparation = viewModel::retryPreparation,
         cameraPermissionState = cameraPermissionState,
         loadImage = imageLoader::load,
@@ -340,12 +353,6 @@ private val SpeechRecognitionFailure.messageResource: Int
         SpeechRecognitionFailure.Busy -> R.string.note_voice_busy_error
         SpeechRecognitionFailure.Unknown -> R.string.note_voice_error
     }
-
-private enum class AttachmentSheet {
-    Hidden,
-    Source,
-    Actions,
-}
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this

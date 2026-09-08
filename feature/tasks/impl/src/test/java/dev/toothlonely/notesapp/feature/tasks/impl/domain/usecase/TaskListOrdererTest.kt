@@ -62,6 +62,23 @@ class TaskListOrdererTest {
     }
 
     @Test
+    fun `search finds fuzzy title matches using the notes search rules`() {
+        assertEquals(
+            listOf(2L, 4L, 1L),
+            process(query = "купть").map(Task::id),
+        )
+        assertEquals(
+            listOf(3L),
+            process(query = "пзвнть мме").map(Task::id),
+        )
+    }
+
+    @Test
+    fun `short fuzzy query does not produce accidental task matches`() {
+        assertEquals(emptyList<Task>(), process(query = "кп"))
+    }
+
+    @Test
     fun `search filter and creation sort matrix composes`() {
         val expectations = mapOf(
             Triple(TaskStatusFilter.All, TaskSortOrder.NewestFirst, "Купить") to

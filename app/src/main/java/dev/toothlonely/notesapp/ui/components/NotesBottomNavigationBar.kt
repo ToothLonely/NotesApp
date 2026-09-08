@@ -1,7 +1,8 @@
 package dev.toothlonely.notesapp.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,12 +24,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
+import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppMotion
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppShapes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
@@ -41,6 +47,13 @@ fun NotesBottomNavigationBar(
     onSelectDestination: (AppDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val indicatorPosition = animateFloatAsState(
+        targetValue = AppDestination.entries.indexOf(selectedDestination).toFloat(),
+        animationSpec = tween(NotesAppMotion.navigationIndicatorMillis),
+        label = "navigationIndicatorPosition",
+    )
+    val indicatorColor = MaterialTheme.colorScheme.primaryContainer
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -56,6 +69,30 @@ fun NotesBottomNavigationBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .drawBehind {
+                    val itemWidth = size.width / AppDestination.entries.size
+                    val indicatorWidth = minOf(
+                        itemWidth,
+                        NotesAppSizes.floatingBottomNavigationSelectedItemMaximumWidth.toPx(),
+                    )
+                    val indicatorHeight = minOf(
+                        size.height,
+                        NotesAppSizes.floatingBottomNavigationSelectedItemHeight.toPx(),
+                    )
+                    val start = itemWidth * indicatorPosition.value +
+                        (itemWidth - indicatorWidth) / 2
+                    val left = if (layoutDirection == LayoutDirection.Ltr) {
+                        start
+                    } else {
+                        size.width - start - indicatorWidth
+                    }
+                    drawRoundRect(
+                        color = indicatorColor,
+                        topLeft = Offset(left, (size.height - indicatorHeight) / 2),
+                        size = Size(indicatorWidth, indicatorHeight),
+                        cornerRadius = CornerRadius(indicatorHeight / 2),
+                    )
+                }
                 .selectableGroup(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -93,14 +130,6 @@ fun NotesBottomNavigationBar(
                             .fillMaxWidth()
                             .height(
                                 NotesAppSizes.floatingBottomNavigationSelectedItemHeight,
-                            )
-                            .clip(NotesAppShapes.full)
-                            .background(
-                                if (selected) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceContainerHigh
-                                },
                             ),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally,

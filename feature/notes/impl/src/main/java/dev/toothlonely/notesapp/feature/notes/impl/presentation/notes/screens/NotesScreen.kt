@@ -54,7 +54,7 @@ import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesSortOrder
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesViewMode
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.NotesContentState
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.NotesUiState
-import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.feedback.DeleteModeBanner
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.feedback.DeleteNoteDialog
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.feedback.NotesActionErrorBanner
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.screens.content.NotesGrid
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.topbar.NotesTopBar
@@ -76,7 +76,9 @@ fun NotesScreen(
     onRetryViewModeChange: () -> Unit,
     onDismissViewModeError: () -> Unit,
     onToggleDeleteMode: () -> Unit,
-    onDeleteNote: (Long) -> Unit,
+    onRequestDeleteNote: (Long, String) -> Unit,
+    onConfirmDeleteNote: () -> Unit,
+    onCancelDeleteNote: () -> Unit,
     onRetryDelete: () -> Unit,
     onDismissDeleteError: () -> Unit,
     onRetryLoading: () -> Unit,
@@ -216,12 +218,6 @@ fun NotesScreen(
                     onClear = onClearSearch,
                     modifier = Modifier.padding(top = NotesAppSpacing.space2),
                 )
-                if (state.isDeleteMode) {
-                    DeleteModeBanner(
-                        message = stringResource(R.string.notes_delete_mode_banner),
-                        modifier = Modifier.padding(top = NotesAppSpacing.space3),
-                    )
-                }
                 if (state.isDeleteMode && state.failedDeleteNoteId != null) {
                     NotesActionErrorBanner(
                         message = stringResource(R.string.notes_delete_error),
@@ -281,7 +277,7 @@ fun NotesScreen(
                                 isDeleteMode = state.isDeleteMode,
                                 deletingNoteIds = state.deletingNoteIds,
                                 onOpenNote = onOpenNote,
-                                onDeleteNote = onDeleteNote,
+                                onDeleteNote = onRequestDeleteNote,
                                 loadImage = loadImage,
                                 bottomContentPadding = bottomNavigationInset,
                                 modifier = screenModifier,
@@ -297,7 +293,7 @@ fun NotesScreen(
                                 isDeleteMode = state.isDeleteMode,
                                 deletingNoteIds = state.deletingNoteIds,
                                 onOpenNote = onOpenNote,
-                                onDeleteNote = onDeleteNote,
+                                onDeleteNote = onRequestDeleteNote,
                                 loadImage = loadImage,
                                 bottomContentPadding = bottomNavigationInset,
                                 modifier = screenModifier,
@@ -315,6 +311,22 @@ fun NotesScreen(
                 }
             }
         }
+    }
+
+    state.deleteConfirmation?.let { confirmation ->
+        DeleteNoteDialog(
+            title = stringResource(R.string.notes_delete_dialog_title),
+            message = stringResource(
+                R.string.notes_delete_dialog_message,
+                confirmation.noteTitle,
+            ),
+            cancelLabel = stringResource(R.string.notes_delete_cancel),
+            deleteLabel = stringResource(R.string.notes_delete),
+            deletingDescription = stringResource(R.string.notes_deleting),
+            isDeleting = confirmation.isDeleting,
+            onConfirm = onConfirmDeleteNote,
+            onDismiss = onCancelDeleteNote,
+        )
     }
 }
 
@@ -336,7 +348,9 @@ private fun NotesScreenPreview() {
             onRetryViewModeChange = {},
             onDismissViewModeError = {},
             onToggleDeleteMode = {},
-            onDeleteNote = {},
+            onRequestDeleteNote = { _, _ -> },
+            onConfirmDeleteNote = {},
+            onCancelDeleteNote = {},
             onRetryDelete = {},
             onDismissDeleteError = {},
             onRetryLoading = {},

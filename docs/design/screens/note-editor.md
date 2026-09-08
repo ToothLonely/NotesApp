@@ -10,7 +10,7 @@
 
 ### Reading
 
-1. Top App Bar: Back и статический заголовок заметки на одной горизонтали.
+1. Top App Bar: Back, статический заголовок заметки и действие «Поделиться» на одной горизонтали.
 2. Прокручиваемый статический текст заметки без рамки, заливки, label или отдельного контейнера.
 3. Primary FAB с карандашом: «Редактировать заметку».
 
@@ -67,8 +67,8 @@ Bottom Navigation отсутствует. Экран вертикально пр
 | --- | --- | --- |
 | Loading existing | top bar + skeleton/centered progress «Загружаем заметку…» | Back доступен, редактирование недоступно |
 | New content | серый placeholder «Заголовок вашей заметки» в app bar, пустой body, paperclip; image placeholder отсутствует; Save имеет disabled-оформление | ввод title/body, voice, attachment; Save становится доступна после заполнения любого из полей |
-| Reading без изображения | Back и сохранённый title в Top App Bar; ниже обычный статический body; Edit FAB | Back возвращает в Notes, Edit FAB включает Editing |
-| Reading с изображением | Back, thumbnail и сохранённый title; ниже обычный статический body; Edit FAB | thumbnail открывает preview/actions, Edit FAB включает Editing |
+| Reading без изображения | Back, сохранённый title и Share в Top App Bar; ниже обычный статический body; Edit FAB | Back возвращает в Notes, Share отправляет title и body через системный chooser, Edit FAB включает Editing |
+| Reading с изображением | Back, thumbnail, сохранённый title и Share; ниже обычный статический body; Edit FAB | thumbnail открывает preview/actions, Share отправляет текст заметки, Edit FAB включает Editing |
 | Editing | то же редактируемое представление, что и New content, с загруженными title/body | Back отменяет несохранённые изменения и возвращает Reading; Save обновляет запись и возвращает Reading |
 | Image picking/camera | modal bottom sheet «Добавить изображение»: «Выбрать файл», «Сделать фото» | sheet закрывается после выбора или отмены |
 | Image attached | небольшая круглая thumbnail в app bar | tap: просмотреть, заменить или удалить |

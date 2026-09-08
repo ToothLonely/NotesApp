@@ -313,9 +313,6 @@ fun TasksScreen(
                         state.content is TasksContentState.Empty && state.editor == null ->
                             TasksEmptyScreen(
                                 title = stringResource(R.string.tasks_empty_title),
-                                body = stringResource(R.string.tasks_empty_body),
-                                addTaskLabel = stringResource(R.string.tasks_add),
-                                onAddTask = onRequestCreationMenu,
                                 modifier = safeScreenModifier,
                             )
 

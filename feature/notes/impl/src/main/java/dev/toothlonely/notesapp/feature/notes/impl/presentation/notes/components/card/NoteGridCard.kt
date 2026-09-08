@@ -1,6 +1,7 @@
 package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes.components.card
 
 import androidx.compose.foundation.clickable
+import dev.toothlonely.notesapp.feature.notes.impl.navigation.noteContainerTransition
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -58,6 +59,7 @@ fun NoteGridCard(
     }
     Card(
         modifier = modifier
+            .noteContainerTransition(note.id.takeUnless { isDeleteMode })
             .fillMaxWidth()
             .then(
                 if (isDeleteMode) {
