@@ -10,6 +10,9 @@ import dev.toothlonely.notesapp.core.data.database.notesMigration1To2
 import dev.toothlonely.notesapp.core.data.database.notesMigration2To3
 import dev.toothlonely.notesapp.core.data.database.notesMigration3To4
 import dev.toothlonely.notesapp.core.data.database.notesMigration4To5
+import dev.toothlonely.notesapp.core.data.preferences.DataStoreUserPreferencesRepository
+import dev.toothlonely.notesapp.core.data.preferences.UserPreferencesDataSource
+import dev.toothlonely.notesapp.core.domain.repository.UserPreferencesRepository
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
@@ -22,6 +25,8 @@ private val Context.userPreferencesDataStore: DataStore<Preferences> by preferen
 
 val coreDataModule = module {
     single<DataStore<Preferences>> { androidContext().userPreferencesDataStore }
+    single { UserPreferencesDataSource(get()) }
+    single<UserPreferencesRepository> { DataStoreUserPreferencesRepository(get()) }
     single {
         Room.databaseBuilder(
             context = androidContext(),

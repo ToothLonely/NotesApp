@@ -44,6 +44,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.toothlonely.notesapp.core.designsystem.R as DesignSystemR
 import dev.toothlonely.notesapp.core.designsystem.component.AppSearchField
+import dev.toothlonely.notesapp.core.designsystem.component.BottomNavigationAwareSnackbarHost
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppShapes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
@@ -130,6 +131,7 @@ fun NotesScreen(
             onNotesRevisionHandled(state.notesRevision)
         }
     }
+    val isFloatingActionButtonVisible = !state.isDeleteMode && isFabVisible
     Scaffold(
         modifier = modifier
             .fillMaxSize()
@@ -161,18 +163,15 @@ fun NotesScreen(
             )
         },
         snackbarHost = {
-            val snackbarModifier = if (state.isDeleteMode) {
-                Modifier.padding(bottom = bottomNavigationInset)
-            } else {
-                Modifier
-            }
-            Box(modifier = snackbarModifier) {
-                snackbarHost()
-            }
+            BottomNavigationAwareSnackbarHost(
+                bottomNavigationPadding = bottomNavigationPadding,
+                isFloatingActionButtonVisible = isFloatingActionButtonVisible,
+                snackbarHost = snackbarHost,
+            )
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = !state.isDeleteMode && isFabVisible,
+                visible = isFloatingActionButtonVisible,
                 enter = slideInVertically { fullHeight -> fullHeight } + fadeIn(),
                 exit = slideOutVertically { fullHeight -> fullHeight } + fadeOut(),
             ) {

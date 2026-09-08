@@ -90,3 +90,20 @@ internal fun notesAppColorScheme(
         )
     }
 }
+
+fun notesAppAccentPrimaryColor(
+    accentPalette: NotesAppAccentPalette,
+    useDarkColors: Boolean,
+): Color = accentPalette.colors.let { colors ->
+    if (useDarkColors) colors.darkPrimary else colors.lightPrimary
+}
+
+fun notesAppAccentOnPrimaryColor(
+    accentPalette: NotesAppAccentPalette,
+    useDarkColors: Boolean,
+): Color = accentPalette.colors.let { colors ->
+    if (useDarkColors) colors.darkOnPrimary else colors.lightOnPrimary
+}
+
+fun notesAppNeutralBackgroundColor(useDarkColors: Boolean): Color =
+    if (useDarkColors) DarkBackground else LightBackground

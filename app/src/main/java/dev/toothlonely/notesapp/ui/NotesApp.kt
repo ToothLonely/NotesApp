@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +20,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
@@ -31,10 +33,17 @@ import dev.toothlonely.notesapp.navigation.AppDestination
 import dev.toothlonely.notesapp.navigation.rememberAppNavigationState
 import dev.toothlonely.notesapp.navigation.toEntries
 import dev.toothlonely.notesapp.ui.components.NotesBottomNavigationBar
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun NotesApp() {
-    NotesAppTheme {
+fun NotesApp(
+    appThemeViewModel: AppThemeViewModel = koinViewModel(),
+) {
+    val userPreferences by appThemeViewModel.state.collectAsStateWithLifecycle()
+    NotesAppTheme(
+        themeMode = userPreferences.themeMode.toDesignSystemThemeMode(),
+        accentPalette = userPreferences.accentPreset.toDesignSystemAccentPalette(),
+    ) {
         val navigationState = rememberAppNavigationState()
         val notesDestinationState = remember { NotesDestinationState() }
         val density = LocalDensity.current

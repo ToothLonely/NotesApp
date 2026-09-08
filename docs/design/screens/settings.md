@@ -10,8 +10,8 @@
 
 1. Top App Bar: «Настройки».
 2. Balance card.
-3. Секция «Тема приложения».
-4. Секция «Цветовая схема».
+3. Секция «Цветовая схема».
+4. Секция «Тема приложения».
 5. Outlined error button «Сбросить настройки».
 6. Bottom Navigation.
 
@@ -25,12 +25,15 @@
 │ │ 12 480 токенов              │ │
 │ └──────────────────────────────┘ │
 │                                  │
-│ Тема приложения                  │
-│ [Системная][Светлая][Тёмная]    │
-│                                  │
 │ Цветовая схема                   │
 │  ●       ●       ●       ●      │
 │ Индиго Бирюза  Малина  Янтарь   │
+│                                  │
+│ Тема приложения                  │
+│ ┌────────┐┌────────┐┌────────┐  │
+│ │ light  ││ white  ││ dark   │  │
+│ │  ▣ Сис.││ ☀ Свет.││ ◐ Тёмн.│  │
+│ └────────┘└────────┘└────────┘  │
 │                                  │
 │ [  ↺  Сбросить настройки       ] │
 ├──────────────────────────────────┤
@@ -44,24 +47,26 @@ Preferences и remote balance загружаются независимо, по�
 
 | Состояние | Представление | Действия |
 | --- | --- | --- |
-| Preferences loading | skeleton theme/palette controls; balance начинает собственную загрузку | Bottom Navigation |
+| Preferences loading | skeleton palette/theme controls; balance начинает собственную загрузку | Bottom Navigation |
 | Content + balance loading | controls активны; balance card показывает compact progress + «Загружаем баланс…» | менять тему/палитру/сбросить |
 | Content + balance success | крупное число и label «токенов» | все настройки |
 | Content + balance error | error icon, «Не удалось загрузить баланс», supporting text | «Повторить»; локальные настройки остаются активны |
 | Preferences error | full/section error «Не удалось загрузить настройки» | «Повторить»; balance card может отображать собственный state |
-| Saving preference | выбранное значение применяется optimistic; конкретный control кратко busy | остальные независимые controls доступны |
+| Saving preference | выбранное значение применяется optimistic ко всему приложению, включая системные панели; конкретный control кратко busy | остальные независимые controls доступны |
 | Save error | значение возвращается к сохранённому, Snackbar/error text | повторить выбор |
 | Reset requested | confirmation dialog поверх текущих настроек; значения ещё не изменены | «Отмена» / «Сбросить» |
-| Reset saving | после подтверждения System + Indigo применяются optimistic; reset action кратко busy | остальные controls временно недоступны |
+| Reset saving | после подтверждения System + Indigo применяются optimistic ко всему приложению, включая системные панели; reset action кратко busy | остальные controls временно недоступны |
 | Reset success | диалог закрывается, System + Indigo остаются выбранными | Snackbar «Настройки сброшены» |
 | Reset error | диалог закрывается, возвращаются сохранённые значения | Snackbar «Не удалось сбросить настройки»; повторить действие |
 
 ## Theme selector
 
-- Compact: `SingleChoiceSegmentedButtonRow` с «Системная», «Светлая», «Тёмная».
-- Выбранный вариант имеет selected semantics, check mark и accent-container, а не только новый цвет.
-- Изменение применяется без перезапуска и без ожидания сетевого balance.
-- При font scale или ширине, где labels не помещаются, используется вертикальная radio-группа из трёх строк.
+- Три равнозначные preview-карточки расположены в порядке «Системная», «Светлая», «Тёмная».
+- Верхняя часть карточки показывает тему: системная использует переход от светлой нейтральной поверхности к тёмной, светлая и тёмная — соответствующий однотонный фон.
+- Под preview расположено только название режима, выровненное по центру. Вся карточка является единой touch target и получает radio/selected semantics.
+- Выбранный вариант имеет accent outline 2dp; остальные — нейтральный outline 1dp. Выбранность доступна семантически и не зависит только от цвета.
+- Изменение применяется ко всему приложению и системным панелям без перезапуска, завершения записи в DataStore или ожидания сетевого balance.
+- При увеличенном font scale или недостаточной ширине карточки перестраиваются в вертикальный список; preview получает ограниченную высоту, а labels не обрезаются.
 
 ## Accent selector
 
@@ -73,7 +78,7 @@ Preferences и remote balance загружаются независимо, по�
 
 ## Balance card
 
-- Карточка использует радиус 28dp; segmented selector и reset button имеют форму capsule.
+- Balance card использует радиус 28dp; theme preview cards — крупные скруглённые формы, reset button — capsule.
 - Заголовок `titleMedium`, значение `headlineMedium`, единица `bodyMedium`.
 - Loading сохраняет высоту карточки, чтобы секции ниже не прыгали.
 - Error остаётся внутри карточки: сетевой сбой не блокирует локальные настройки.
@@ -113,6 +118,7 @@ feature/settings/impl/presentation/settings/
     |-- SettingsTopBar.kt
     |-- GigaChatBalanceCard.kt
     |-- ThemeModeSelector.kt
+    |-- ThemeModeOption.kt
     |-- AccentPaletteSelector.kt
     |-- AccentPaletteOption.kt
     |-- ResetSettingsButton.kt

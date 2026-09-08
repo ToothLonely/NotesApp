@@ -19,6 +19,7 @@ object NotesAppSizes {
     val taskEditorFieldMinimumHeight = 56.dp
     val paletteSwatch = 48.dp
     val paletteTouchTarget = 64.dp
+    val themePreviewHeight = 96.dp
     val floatingBottomNavigationHeight = 64.dp
     val floatingBottomNavigationSelectedItemHeight = 48.dp
     val floatingBottomNavigationSelectedItemMaximumWidth = 88.dp
@@ -26,6 +27,7 @@ object NotesAppSizes {
     val floatingBottomNavigationBottomGap = 12.dp
     val floatingBottomNavigationElevation = 3.dp
     val outlineWidth = 1.dp
+    val selectedOutlineWidth = 2.dp
     val compactScreenHorizontalPadding = 16.dp
     val adaptiveContentThreshold = 600.dp
     val maximumContentWidth = 720.dp
