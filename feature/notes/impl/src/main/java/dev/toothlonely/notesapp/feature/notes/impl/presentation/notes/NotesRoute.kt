@@ -2,7 +2,6 @@ package dev.toothlonely.notesapp.feature.notes.impl.presentation.notes
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -10,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.image.NoteImageLoader
+import dev.toothlonely.notesapp.core.designsystem.component.AppSnackbarHost
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.toothlonely.notesapp.feature.notes.impl.R
 import dev.toothlonely.notesapp.feature.notes.impl.navigation.NotesDestinationState
@@ -72,6 +72,6 @@ fun NotesRoute(
         onDismissDeleteError = viewModel::dismissDeleteError,
         onRetryLoading = viewModel::retryLoading,
         loadImage = imageLoader::load,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(hostState = snackbarHostState) },
     )
 }

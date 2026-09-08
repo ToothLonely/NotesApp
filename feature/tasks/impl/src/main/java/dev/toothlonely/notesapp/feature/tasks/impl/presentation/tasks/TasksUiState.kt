@@ -1,5 +1,6 @@
 package dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks
 
+import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionFailure
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.Task
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.TaskSortOrder
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.TaskStatusFilter
@@ -15,6 +16,7 @@ data class TasksUiState(
     val statusUpdateError: TaskStatusUpdateError? = null,
     val deleteConfirmation: DeleteTaskConfirmationUiState? = null,
     val deleteError: TaskDeleteError? = null,
+    val voiceInput: TasksVoiceInputUiState = TasksVoiceInputUiState.Idle,
 )
 
 sealed interface TasksContentState {
@@ -59,3 +61,40 @@ data class TaskDeleteError(
     val taskId: Long,
     val taskTitle: String,
 )
+
+sealed interface TasksVoiceInputUiState {
+    data object Idle : TasksVoiceInputUiState
+
+    data class Recording(
+        val durationSeconds: Int = 0,
+    ) : TasksVoiceInputUiState
+
+    data object SpeechProcessing : TasksVoiceInputUiState
+
+    data object GigaChatProcessing : TasksVoiceInputUiState
+
+    data class PermissionDenied(
+        val canRequestAgain: Boolean,
+    ) : TasksVoiceInputUiState
+
+    data class Error(
+        val failure: TasksVoiceFailure,
+        val recognizedText: String? = null,
+        val formulatedTitle: String? = null,
+    ) : TasksVoiceInputUiState
+}
+
+sealed interface TasksVoiceFailure {
+    data class Speech(
+        val failure: SpeechRecognitionFailure,
+    ) : TasksVoiceFailure
+
+    data object GigaChat : TasksVoiceFailure
+
+    data object Storage : TasksVoiceFailure
+}
+
+val TasksVoiceInputUiState.isBusy: Boolean
+    get() = this is TasksVoiceInputUiState.Recording ||
+        this is TasksVoiceInputUiState.SpeechProcessing ||
+        this is TasksVoiceInputUiState.GigaChatProcessing

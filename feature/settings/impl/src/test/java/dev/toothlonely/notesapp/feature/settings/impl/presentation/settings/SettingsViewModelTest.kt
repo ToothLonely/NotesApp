@@ -4,6 +4,7 @@ import dev.toothlonely.notesapp.core.domain.model.AccentPreset
 import dev.toothlonely.notesapp.core.domain.model.ThemeMode
 import dev.toothlonely.notesapp.core.domain.model.UserPreferences
 import dev.toothlonely.notesapp.feature.settings.impl.testutil.FakeUserPreferencesRepository
+import dev.toothlonely.notesapp.feature.settings.impl.testutil.FakeGigaChatRepository
 import dev.toothlonely.notesapp.feature.settings.impl.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,11 +24,18 @@ class SettingsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun `initial preferences loading resolves independently from unavailable balance`() = runTest {
-        val viewModel = SettingsViewModel(FakeUserPreferencesRepository())
+    fun `preferences resolve while balance is still loading`() = runTest {
+        val balanceGate = CompletableDeferred<Unit>()
+        val gigaChatRepository = FakeGigaChatRepository().apply {
+            this.balanceGate = balanceGate
+        }
+        val viewModel = createViewModel(
+            preferencesRepository = FakeUserPreferencesRepository(),
+            gigaChatRepository = gigaChatRepository,
+        )
 
         assertEquals(SettingsPreferencesUiState.Loading, viewModel.state.value.preferencesState)
-        assertEquals(GigaChatBalanceUiState.Unavailable, viewModel.state.value.balanceState)
+        assertEquals(GigaChatBalanceUiState.Loading, viewModel.state.value.balanceState)
 
         runCurrent()
 
@@ -35,7 +43,40 @@ class SettingsViewModelTest {
             SettingsPreferencesUiState.Content(UserPreferences()),
             viewModel.state.value.preferencesState,
         )
-        assertEquals(GigaChatBalanceUiState.Unavailable, viewModel.state.value.balanceState)
+        assertEquals(GigaChatBalanceUiState.Loading, viewModel.state.value.balanceState)
+
+        balanceGate.complete(Unit)
+        runCurrent()
+        assertEquals(
+            GigaChatBalanceUiState.Content(tokenCount = 12_480),
+            viewModel.state.value.balanceState,
+        )
+    }
+
+    @Test
+    fun `balance failure is retryable without blocking preferences`() = runTest {
+        val gigaChatRepository = FakeGigaChatRepository().apply {
+            balanceFailure = IllegalStateException("Network unavailable")
+        }
+        val viewModel = createViewModel(
+            preferencesRepository = FakeUserPreferencesRepository(),
+            gigaChatRepository = gigaChatRepository,
+        )
+        runCurrent()
+
+        assertEquals(GigaChatBalanceUiState.Error, viewModel.state.value.balanceState)
+        assertTrue(viewModel.state.value.preferencesState is SettingsPreferencesUiState.Content)
+
+        gigaChatRepository.balanceFailure = null
+        viewModel.retryBalance()
+        assertEquals(GigaChatBalanceUiState.Loading, viewModel.state.value.balanceState)
+        runCurrent()
+
+        assertEquals(
+            GigaChatBalanceUiState.Content(tokenCount = 12_480),
+            viewModel.state.value.balanceState,
+        )
+        assertEquals(2, gigaChatRepository.balanceRequestCount)
     }
 
     @Test
@@ -43,7 +84,7 @@ class SettingsViewModelTest {
         val repository = FakeUserPreferencesRepository().apply {
             observeFailure = IllegalStateException("Preferences unavailable")
         }
-        val viewModel = SettingsViewModel(repository)
+        val viewModel = createViewModel(repository)
 
         runCurrent()
         assertEquals(SettingsPreferencesUiState.Error, viewModel.state.value.preferencesState)
@@ -63,7 +104,7 @@ class SettingsViewModelTest {
     fun `theme selection is optimistic and persists only once`() = runTest {
         val gate = CompletableDeferred<Unit>()
         val repository = FakeUserPreferencesRepository().apply { themeGate = gate }
-        val viewModel = SettingsViewModel(repository)
+        val viewModel = createViewModel(repository)
         runCurrent()
 
         viewModel.selectThemeMode(ThemeMode.Dark)
@@ -91,7 +132,7 @@ class SettingsViewModelTest {
         ).apply {
             themeFailure = IllegalStateException("Write failed")
         }
-        val viewModel = SettingsViewModel(repository)
+        val viewModel = createViewModel(repository)
         runCurrent()
         val event = async { viewModel.events.first() }
 
@@ -108,7 +149,7 @@ class SettingsViewModelTest {
     fun `accent selection persists while theme control remains independent`() = runTest {
         val gate = CompletableDeferred<Unit>()
         val repository = FakeUserPreferencesRepository().apply { accentGate = gate }
-        val viewModel = SettingsViewModel(repository)
+        val viewModel = createViewModel(repository)
         runCurrent()
 
         viewModel.selectAccentPreset(AccentPreset.Raspberry)
@@ -130,7 +171,7 @@ class SettingsViewModelTest {
     fun `reset requires confirmation and cancel leaves preferences unchanged`() = runTest {
         val original = UserPreferences(ThemeMode.Dark, AccentPreset.Amber)
         val repository = FakeUserPreferencesRepository(original)
-        val viewModel = SettingsViewModel(repository)
+        val viewModel = createViewModel(repository)
         runCurrent()
 
         viewModel.requestReset()
@@ -150,7 +191,7 @@ class SettingsViewModelTest {
         val repository = FakeUserPreferencesRepository(
             UserPreferences(ThemeMode.Dark, AccentPreset.Amber),
         ).apply { resetGate = gate }
-        val viewModel = SettingsViewModel(repository)
+        val viewModel = createViewModel(repository)
         runCurrent()
         val event = async { viewModel.events.first() }
 
@@ -177,7 +218,7 @@ class SettingsViewModelTest {
         val repository = FakeUserPreferencesRepository(original).apply {
             resetFailure = IllegalStateException("Reset failed")
         }
-        val viewModel = SettingsViewModel(repository)
+        val viewModel = createViewModel(repository)
         runCurrent()
         val event = async { viewModel.events.first() }
 
@@ -193,4 +234,12 @@ class SettingsViewModelTest {
 
     private fun SettingsViewModel.contentState(): SettingsPreferencesUiState.Content =
         state.value.preferencesState as SettingsPreferencesUiState.Content
+
+    private fun createViewModel(
+        preferencesRepository: FakeUserPreferencesRepository,
+        gigaChatRepository: FakeGigaChatRepository = FakeGigaChatRepository(),
+    ) = SettingsViewModel(
+        userPreferencesRepository = preferencesRepository,
+        gigaChatRepository = gigaChatRepository,
+    )
 }

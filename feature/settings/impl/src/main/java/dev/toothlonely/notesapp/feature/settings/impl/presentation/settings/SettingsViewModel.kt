@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dev.toothlonely.notesapp.core.domain.model.AccentPreset
 import dev.toothlonely.notesapp.core.domain.model.ThemeMode
 import dev.toothlonely.notesapp.core.domain.model.UserPreferences
+import dev.toothlonely.notesapp.core.domain.repository.GigaChatRepository
 import dev.toothlonely.notesapp.core.domain.repository.UserPreferencesRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -19,6 +20,7 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val gigaChatRepository: GigaChatRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SettingsUiState())
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
@@ -27,13 +29,19 @@ class SettingsViewModel(
     val events: Flow<SettingsEvent> = eventChannel.receiveAsFlow()
 
     private var observationJob: Job? = null
+    private var balanceJob: Job? = null
 
     init {
         observePreferences()
+        loadBalance()
     }
 
     fun retryPreferences() {
         observePreferences()
+    }
+
+    fun retryBalance() {
+        loadBalance()
     }
 
     fun selectThemeMode(themeMode: ThemeMode) {
@@ -194,6 +202,26 @@ class SettingsViewModel(
                 _state.update { state ->
                     state.copy(preferencesState = SettingsPreferencesUiState.Error)
                 }
+            }
+        }
+    }
+
+    private fun loadBalance() {
+        if (balanceJob?.isActive == true) return
+        _state.update { state -> state.copy(balanceState = GigaChatBalanceUiState.Loading) }
+        balanceJob = viewModelScope.launch {
+            _state.update { state ->
+                state.copy(
+                    balanceState = try {
+                        GigaChatBalanceUiState.Content(
+                            tokenCount = gigaChatRepository.getBalance().totalTokens,
+                        )
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Throwable) {
+                        GigaChatBalanceUiState.Error
+                    },
+                )
             }
         }
     }

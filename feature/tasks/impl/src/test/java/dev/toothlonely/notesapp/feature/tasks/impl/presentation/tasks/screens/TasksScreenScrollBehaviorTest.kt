@@ -1,10 +1,35 @@
 package dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.screens
 
+import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.TasksVoiceInputUiState
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TasksScreenScrollBehaviorTest {
+    @Test
+    fun `recording keeps stop fab visible regardless of scroll`() {
+        assertTrue(
+            shouldShowTasksFab(
+                isContentLoaded = true,
+                isEditorVisible = false,
+                voiceInput = TasksVoiceInputUiState.Recording(),
+                isVisibleByScroll = false,
+            ),
+        )
+    }
+
+    @Test
+    fun `voice processing hides tasks fab`() {
+        assertFalse(
+            shouldShowTasksFab(
+                isContentLoaded = true,
+                isEditorVisible = false,
+                voiceInput = TasksVoiceInputUiState.SpeechProcessing,
+                isVisibleByScroll = true,
+            ),
+        )
+    }
+
     @Test
     fun `scrolling down hides tasks fab`() {
         assertFalse(

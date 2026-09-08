@@ -4,7 +4,7 @@ import dev.toothlonely.notesapp.core.domain.model.UserPreferences
 
 data class SettingsUiState(
     val preferencesState: SettingsPreferencesUiState = SettingsPreferencesUiState.Loading,
-    val balanceState: GigaChatBalanceUiState = GigaChatBalanceUiState.Unavailable,
+    val balanceState: GigaChatBalanceUiState = GigaChatBalanceUiState.Loading,
 )
 
 sealed interface SettingsPreferencesUiState {
@@ -22,5 +22,11 @@ sealed interface SettingsPreferencesUiState {
 }
 
 sealed interface GigaChatBalanceUiState {
-    data object Unavailable : GigaChatBalanceUiState
+    data object Loading : GigaChatBalanceUiState
+
+    data class Content(
+        val tokenCount: Long,
+    ) : GigaChatBalanceUiState
+
+    data object Error : GigaChatBalanceUiState
 }

@@ -75,9 +75,9 @@ Bottom Navigation отсутствует. Экран вертикально пр
 | Closing during image processing | поля, Save и attachment actions disabled; progress «Закрываем редактор…» | после завершения обработки временные файлы удаляются и редактор закрывается |
 | Saving | progress внутри Save, поля и attachment actions временно disabled | Back не запускает второе сохранение |
 | Load/save error | полный error state при загрузке; inline error banner при сохранении | «Повторить»; введённый текст не теряется |
-| Voice recording | Voice FAB меняется на Stop; status panel, timer и «Отмена» | остановить или отменить запись |
+| Voice recording | Voice FAB меняется на Stop; status panel и timer без дополнительных действий | остановить запись через FAB |
 | Voice processing | Voice FAB disabled/progress + «Распознаём речь…» | поля видны; Save disabled до завершения |
-| Voice error | error panel с короткой причиной | «Записать снова» и закрыть |
+| Voice error | Snackbar с короткой причиной | повторно запустить ввод через Voice FAB |
 | Permission denied | modal dialog поверх редактора, поля и введённый текст остаются на месте | «Разрешить» при временном отказе; «Открыть настройки», если системный запрос больше нельзя показать; «Не сейчас» закрывает dialog |
 
 ### Переходы Creating, Reading и Editing
@@ -118,7 +118,7 @@ Bottom Navigation отсутствует. Экран вертикально пр
 
 ### Голосовой ввод
 
-- В idle-состоянии используется круглый tonal Voice FAB 56dp: `primaryContainer` / `onPrimaryContainer`, небольшая elevation.
+- В idle-состоянии используется круглый Voice FAB 56dp: `primary` / `onPrimary`, небольшая elevation.
 - FAB закреплён в нижнем правом углу editor content на 16dp выше Save. Body получает внутренний bottom inset, поэтому FAB не закрывает текст и caret.
 - Во время записи иконка FAB меняется с mic на Stop. Во время обработки FAB disabled и показывает progress либо сопровождается progress в status panel.
 - Запись добавляет распознанный текст в конец body.

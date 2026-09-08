@@ -2,6 +2,9 @@ package dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.toothlonely.notesapp.core.domain.repository.GigaChatRepository
+import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionEvent
+import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionRepository
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.NewTask
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.Task
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.TaskSortOrder
@@ -12,6 +15,7 @@ import dev.toothlonely.notesapp.feature.tasks.impl.domain.usecase.TaskTitleValid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +28,8 @@ class TasksViewModel(
     private val tasksRepository: TasksRepository,
     private val taskTitleValidator: TaskTitleValidator,
     private val taskListOrderer: TaskListOrderer,
+    private val speechRecognitionRepository: SpeechRecognitionRepository,
+    private val gigaChatRepository: GigaChatRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(TasksUiState())
     val state: StateFlow<TasksUiState> = _state.asStateFlow()
@@ -32,10 +38,13 @@ class TasksViewModel(
     val events: Flow<TasksEvent> = eventChannel.receiveAsFlow()
 
     private var observationJob: Job? = null
+    private var voiceProcessingJob: Job? = null
+    private var voiceTimerJob: Job? = null
     private var allTasks: List<Task> = emptyList()
     private var pendingStatusUpdates: Map<Long, Boolean> = emptyMap()
 
     init {
+        observeSpeechRecognition()
         observeTasks()
     }
 
@@ -80,7 +89,7 @@ class TasksViewModel(
 
     fun startCreatingTask() {
         _state.update { state ->
-            if (state.editor != null || !state.content.isLoaded()) {
+            if (state.editor != null || state.voiceInput.isBusy || !state.content.isLoaded()) {
                 state
             } else {
                 state.copy(editor = InlineTaskEditorUiState())
@@ -88,10 +97,72 @@ class TasksViewModel(
         }
     }
 
+    fun startVoiceInput() {
+        val current = _state.value
+        if (
+            !current.content.isLoaded() ||
+            current.editor != null ||
+            current.deleteConfirmation != null ||
+            current.voiceInput.isBusy
+        ) {
+            return
+        }
+        _state.value = current.copy(
+            voiceInput = TasksVoiceInputUiState.Recording(),
+        )
+        startVoiceTimer()
+        speechRecognitionRepository.start(VOICE_LOCALE_TAG)
+    }
+
+    fun stopVoiceInput() {
+        val current = _state.value
+        if (current.voiceInput !is TasksVoiceInputUiState.Recording) return
+        stopVoiceTimer()
+        _state.value = current.copy(voiceInput = TasksVoiceInputUiState.SpeechProcessing)
+        speechRecognitionRepository.stop()
+    }
+
+    fun cancelVoiceInput() {
+        if (!_state.value.voiceInput.isBusy) return
+        stopVoiceTimer()
+        voiceProcessingJob?.cancel()
+        voiceProcessingJob = null
+        speechRecognitionRepository.cancel()
+        _state.update { state -> state.copy(voiceInput = TasksVoiceInputUiState.Idle) }
+    }
+
+    fun onMicrophonePermissionDenied(canRequestAgain: Boolean) {
+        val current = _state.value
+        if (current.editor != null || current.voiceInput.isBusy) return
+        _state.value = current.copy(
+            voiceInput = TasksVoiceInputUiState.PermissionDenied(canRequestAgain),
+        )
+    }
+
+    fun dismissVoiceInputMessage() {
+        _state.update { state ->
+            if (state.voiceInput.isBusy) state
+            else state.copy(voiceInput = TasksVoiceInputUiState.Idle)
+        }
+    }
+
+    fun retryVoiceProcessing() {
+        val error = _state.value.voiceInput as? TasksVoiceInputUiState.Error ?: return
+        when (error.failure) {
+            is TasksVoiceFailure.Speech -> Unit
+            TasksVoiceFailure.GigaChat -> error.recognizedText?.let(::formulateAndSaveVoiceTask)
+            TasksVoiceFailure.Storage -> error.formulatedTitle?.let(::saveFormulatedVoiceTask)
+        }
+    }
+
     fun startEditingTask(taskId: Long) {
         val task = allTasks.find { task -> task.id == taskId } ?: return
         _state.update { state ->
-            if (state.editor != null || state.deleteConfirmation != null) {
+            if (
+                state.editor != null ||
+                state.deleteConfirmation != null ||
+                state.voiceInput.isBusy
+            ) {
                 state
             } else {
                 state.copy(
@@ -174,7 +245,11 @@ class TasksViewModel(
     fun requestTaskDeletion(taskId: Long) {
         val task = allTasks.find { task -> task.id == taskId } ?: return
         _state.update { state ->
-            if (state.deleteConfirmation != null || state.editor != null) {
+            if (
+                state.deleteConfirmation != null ||
+                state.editor != null ||
+                state.voiceInput.isBusy
+            ) {
                 state
             } else {
                 state.copy(
@@ -230,6 +305,7 @@ class TasksViewModel(
     }
 
     fun toggleTaskStatus(taskId: Long) {
+        if (_state.value.voiceInput.isBusy) return
         val task = allTasks.find { task -> task.id == taskId } ?: return
         requestTaskStatusUpdate(
             taskId = taskId,
@@ -311,6 +387,122 @@ class TasksViewModel(
                 }
             }
         }
+    }
+
+    private fun observeSpeechRecognition() {
+        viewModelScope.launch {
+            speechRecognitionRepository.events.collect(::handleSpeechRecognitionEvent)
+        }
+    }
+
+    private fun handleSpeechRecognitionEvent(event: SpeechRecognitionEvent) {
+        val current = _state.value
+        if (!current.voiceInput.isBusy && event !is SpeechRecognitionEvent.Listening) return
+        when (event) {
+            SpeechRecognitionEvent.Listening -> Unit
+            SpeechRecognitionEvent.Processing -> {
+                stopVoiceTimer()
+                _state.value = current.copy(
+                    voiceInput = TasksVoiceInputUiState.SpeechProcessing,
+                )
+            }
+            is SpeechRecognitionEvent.Result -> {
+                stopVoiceTimer()
+                formulateAndSaveVoiceTask(event.text)
+            }
+            is SpeechRecognitionEvent.Error -> {
+                stopVoiceTimer()
+                _state.value = current.copy(
+                    voiceInput = TasksVoiceInputUiState.Error(
+                        failure = TasksVoiceFailure.Speech(event.failure),
+                    ),
+                )
+            }
+            SpeechRecognitionEvent.Canceled -> {
+                stopVoiceTimer()
+                _state.value = current.copy(voiceInput = TasksVoiceInputUiState.Idle)
+            }
+        }
+    }
+
+    private fun formulateAndSaveVoiceTask(recognizedText: String) {
+        if (voiceProcessingJob?.isActive == true) return
+        val normalizedText = recognizedText.trim()
+        if (normalizedText.isEmpty()) return
+        _state.update { state ->
+            state.copy(voiceInput = TasksVoiceInputUiState.GigaChatProcessing)
+        }
+        voiceProcessingJob = viewModelScope.launch {
+            val title = try {
+                gigaChatRepository.formulateTask(normalizedText)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                _state.update { state ->
+                    state.copy(
+                        voiceInput = TasksVoiceInputUiState.Error(
+                            failure = TasksVoiceFailure.GigaChat,
+                            recognizedText = normalizedText,
+                        ),
+                    )
+                }
+                return@launch
+            }
+            saveVoiceTaskInCurrentJob(title)
+        }
+    }
+
+    private fun saveFormulatedVoiceTask(formulatedTitle: String) {
+        if (voiceProcessingJob?.isActive == true) return
+        _state.update { state ->
+            state.copy(voiceInput = TasksVoiceInputUiState.GigaChatProcessing)
+        }
+        voiceProcessingJob = viewModelScope.launch {
+            saveVoiceTaskInCurrentJob(formulatedTitle)
+        }
+    }
+
+    private suspend fun saveVoiceTaskInCurrentJob(formulatedTitle: String) {
+        try {
+            tasksRepository.createTask(NewTask(formulatedTitle))
+            _state.update { state ->
+                state.copy(voiceInput = TasksVoiceInputUiState.Idle)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            _state.update { state ->
+                state.copy(
+                    voiceInput = TasksVoiceInputUiState.Error(
+                        failure = TasksVoiceFailure.Storage,
+                        formulatedTitle = formulatedTitle,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun startVoiceTimer() {
+        voiceTimerJob?.cancel()
+        voiceTimerJob = viewModelScope.launch {
+            while (true) {
+                delay(VOICE_TIMER_TICK_MILLIS)
+                _state.update { state ->
+                    val recording = state.voiceInput as? TasksVoiceInputUiState.Recording
+                        ?: return@update state
+                    state.copy(
+                        voiceInput = recording.copy(
+                            durationSeconds = recording.durationSeconds + 1,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    private fun stopVoiceTimer() {
+        voiceTimerJob?.cancel()
+        voiceTimerJob = null
     }
 
     private fun deleteTask(taskId: Long, taskTitle: String) {
@@ -406,4 +598,16 @@ class TasksViewModel(
         this is TasksContentState.Empty ||
             this is TasksContentState.SearchEmpty ||
             this is TasksContentState.Content
+
+    override fun onCleared() {
+        stopVoiceTimer()
+        voiceProcessingJob?.cancel()
+        speechRecognitionRepository.close()
+        super.onCleared()
+    }
+
+    private companion object {
+        const val VOICE_LOCALE_TAG = "ru-RU"
+        const val VOICE_TIMER_TICK_MILLIS = 1_000L
+    }
 }

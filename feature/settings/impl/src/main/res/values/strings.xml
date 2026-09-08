@@ -2,7 +2,11 @@
 <resources>
     <string name="settings_title">Настройки</string>
     <string name="settings_balance_title">Баланс GigaChat</string>
-    <string name="settings_balance_unavailable">Баланс пока недоступен</string>
+    <string name="settings_balance_loading">Загружаем баланс…</string>
+    <string name="settings_balance_value">%1$s токенов</string>
+    <string name="settings_balance_content_description">Баланс GigaChat: %1$s токенов</string>
+    <string name="settings_balance_error">Не удалось загрузить баланс</string>
+    <string name="settings_balance_retry">Повторить</string>
     <string name="settings_theme_section_title">Тема приложения</string>
     <string name="settings_theme_system">Системная</string>
     <string name="settings_theme_light">Светлая</string>

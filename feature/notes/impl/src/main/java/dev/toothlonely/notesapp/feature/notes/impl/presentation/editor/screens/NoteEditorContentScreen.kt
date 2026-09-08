@@ -1,18 +1,24 @@
 package dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppTheme
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.feedback.NoteAttachmentErrorBanner
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteVoiceInputUiState
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.action.EditorVoiceInputFab
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.feedback.EditorVoiceStatusPanel
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.field.NoteBodyField
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.feedback.NoteSaveErrorBanner
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.action.SaveNoteButton
@@ -33,9 +39,12 @@ fun NoteEditorContentScreen(
     hasSaveError: Boolean,
     isProcessingImage: Boolean,
     isSaveEnabled: Boolean,
+    voiceInput: NoteVoiceInputUiState,
     onBodyChanged: (String) -> Unit,
     onSave: () -> Unit,
     onDismissAttachmentError: () -> Unit,
+    onStartVoiceInput: () -> Unit,
+    onStopVoiceInput: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -66,13 +75,31 @@ fun NoteEditorContentScreen(
             )
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
-        NoteBodyField(
-            body = body,
-            label = bodyLabel,
-            enabled = !isSaving && !isClosing,
-            onBodyChanged = onBodyChanged,
-            modifier = Modifier.weight(1f),
+        EditorVoiceStatusPanel(
+            state = voiceInput,
         )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+        ) {
+            NoteBodyField(
+                body = body,
+                label = bodyLabel,
+                enabled = !isSaving && !isClosing,
+                onBodyChanged = onBodyChanged,
+                modifier = Modifier.fillMaxSize(),
+            )
+            EditorVoiceInputFab(
+                state = voiceInput,
+                enabled = !isSaving && !isClosing && !isProcessingImage,
+                onStart = onStartVoiceInput,
+                onStop = onStopVoiceInput,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(NotesAppSpacing.space4),
+            )
+        }
         SaveNoteButton(
             label = saveLabel,
             savingLabel = savingLabel,
@@ -103,9 +130,12 @@ private fun NoteEditorContentScreenPreview() {
             hasSaveError = false,
             isProcessingImage = false,
             isSaveEnabled = true,
+            voiceInput = NoteVoiceInputUiState.Idle,
             onBodyChanged = {},
             onSave = {},
             onDismissAttachmentError = {},
+            onStartVoiceInput = {},
+            onStopVoiceInput = {},
         )
     }
 }

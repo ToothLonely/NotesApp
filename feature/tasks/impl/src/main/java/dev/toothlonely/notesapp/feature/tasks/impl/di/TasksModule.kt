@@ -14,5 +14,5 @@ val tasksModule = module {
     single<TasksRepository> { RoomTasksRepository(get(), get()) }
     factory { TaskListOrderer() }
     factory { TaskTitleValidator() }
-    viewModel { TasksViewModel(get(), get(), get()) }
+    viewModel { TasksViewModel(get(), get(), get(), get(), get()) }
 }

@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -53,16 +54,28 @@ import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.TaskStatusFilter
 import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.InlineTaskEditorError
 import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.TasksContentState
 import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.TasksUiState
+import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.TasksVoiceInputUiState
+import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.isBusy
 import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.components.DeleteTaskDialog
+import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.components.TaskCreationMenu
 import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.components.TaskStatusFilters
 import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.components.TasksActionErrorBanner
+import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.components.TasksMicrophonePermissionDialog
 import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.components.TasksTopBar
+import dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.components.TasksVoiceStatusPanel
 
 @Composable
 fun TasksScreen(
     state: TasksUiState,
     bottomNavigationPadding: PaddingValues = PaddingValues(0.dp),
-    onAddTask: () -> Unit,
+    isCreationMenuExpanded: Boolean,
+    onRequestCreationMenu: () -> Unit,
+    onDismissCreationMenu: () -> Unit,
+    onAddTextTask: () -> Unit,
+    onAddVoiceTask: () -> Unit,
+    onStopVoiceInput: () -> Unit,
+    onDismissVoiceInput: () -> Unit,
+    onMicrophonePermissionAction: () -> Unit,
     onDraftQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
     onClearSearch: () -> Unit,
@@ -124,7 +137,13 @@ fun TasksScreen(
         state.content is TasksContentState.Content
     val isEditorVisible = state.editor != null
     val isCreatingTask = state.editor?.taskId == null && isEditorVisible
-    val isFloatingActionButtonVisible = loadedContent && state.editor == null && isFabVisible
+    val isVoiceRecording = state.voiceInput is TasksVoiceInputUiState.Recording
+    val isFloatingActionButtonVisible = shouldShowTasksFab(
+        isContentLoaded = loadedContent,
+        isEditorVisible = isEditorVisible,
+        voiceInput = state.voiceInput,
+        isVisibleByScroll = isFabVisible,
+    )
 
     SideEffect {
         if (
@@ -170,20 +189,41 @@ fun TasksScreen(
                 enter = slideInVertically { fullHeight -> fullHeight } + fadeIn(),
                 exit = slideOutVertically { fullHeight -> fullHeight } + fadeOut(),
             ) {
-                FloatingActionButton(
-                    onClick = onAddTask,
-                    modifier = Modifier.padding(
-                        end = NotesAppSpacing.space2,
-                        bottom = bottomNavigationInset,
-                    ),
-                    shape = NotesAppShapes.full,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ) {
-                    Icon(
-                        painter = painterResource(DesignSystemR.drawable.ic_add_24),
-                        contentDescription = stringResource(R.string.tasks_add),
-                    )
+                Box {
+                    if (!isVoiceRecording) {
+                        TaskCreationMenu(
+                            expanded = isCreationMenuExpanded,
+                            textLabel = stringResource(R.string.tasks_create_text),
+                            voiceLabel = stringResource(R.string.tasks_create_voice),
+                            onTextSelected = onAddTextTask,
+                            onVoiceSelected = onAddVoiceTask,
+                            onDismiss = onDismissCreationMenu,
+                        )
+                    }
+                    FloatingActionButton(
+                        onClick = {
+                            if (isVoiceRecording) onStopVoiceInput()
+                            else onRequestCreationMenu()
+                        },
+                        modifier = Modifier.padding(
+                            end = NotesAppSpacing.space2,
+                            bottom = bottomNavigationInset,
+                        ),
+                        shape = NotesAppShapes.full,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                if (isVoiceRecording) DesignSystemR.drawable.ic_stop_24
+                                else DesignSystemR.drawable.ic_add_24,
+                            ),
+                            contentDescription = stringResource(
+                                if (isVoiceRecording) R.string.tasks_voice_stop
+                                else R.string.tasks_add,
+                            ),
+                        )
+                    }
                 }
             }
         },
@@ -221,6 +261,12 @@ fun TasksScreen(
                         .fillMaxWidth()
                         .padding(top = NotesAppSpacing.space2),
                 )
+                if (state.voiceInput.isBusy) {
+                    TasksVoiceStatusPanel(
+                        state = state.voiceInput,
+                        modifier = Modifier.padding(top = NotesAppSpacing.space2),
+                    )
+                }
                 state.deleteError?.let {
                     TasksActionErrorBanner(
                         message = stringResource(R.string.tasks_delete_error),
@@ -269,7 +315,7 @@ fun TasksScreen(
                                 title = stringResource(R.string.tasks_empty_title),
                                 body = stringResource(R.string.tasks_empty_body),
                                 addTaskLabel = stringResource(R.string.tasks_add),
-                                onAddTask = onAddTask,
+                                onAddTask = onRequestCreationMenu,
                                 modifier = safeScreenModifier,
                             )
 
@@ -285,6 +331,7 @@ fun TasksScreen(
                             tasks = tasks,
                             editor = state.editor,
                             pendingStatusTaskIds = state.pendingStatusTaskIds,
+                            areTaskActionsEnabled = !state.voiceInput.isBusy,
                             taskStatusContentDescription = { task ->
                                 if (task.isCompleted) {
                                     completedTaskDescriptionFormat.format(task.title)
@@ -333,6 +380,13 @@ fun TasksScreen(
                             onDeleteTask = onRequestDeleteTask,
                             bottomContentPadding = bottomNavigationInset,
                             state = listState,
+                            modifier = safeScreenModifier.alpha(
+                                if (state.voiceInput is TasksVoiceInputUiState.GigaChatProcessing) {
+                                    VOICE_PROCESSING_CONTENT_ALPHA
+                                } else {
+                                    1f
+                                },
+                            ),
                         )
                     }
                 }
@@ -355,6 +409,29 @@ fun TasksScreen(
             onDismiss = onCancelDeleteTask,
         )
     }
+
+    (state.voiceInput as? TasksVoiceInputUiState.PermissionDenied)?.let { permission ->
+        TasksMicrophonePermissionDialog(
+            title = stringResource(R.string.tasks_microphone_permission_title),
+            message = stringResource(
+                if (permission.canRequestAgain) {
+                    R.string.tasks_microphone_permission_denied
+                } else {
+                    R.string.tasks_microphone_permission_permanently_denied
+                },
+            ),
+            actionLabel = stringResource(
+                if (permission.canRequestAgain) {
+                    R.string.tasks_microphone_permission_retry
+                } else {
+                    R.string.tasks_microphone_permission_settings
+                },
+            ),
+            dismissLabel = stringResource(R.string.tasks_microphone_permission_cancel),
+            onAction = onMicrophonePermissionAction,
+            onDismiss = onDismissVoiceInput,
+        )
+    }
 }
 
 @Preview(showBackground = true)
@@ -370,7 +447,14 @@ private fun TasksScreenPreview() {
                     ),
                 ),
             ),
-            onAddTask = {},
+            isCreationMenuExpanded = false,
+            onRequestCreationMenu = {},
+            onDismissCreationMenu = {},
+            onAddTextTask = {},
+            onAddVoiceTask = {},
+            onStopVoiceInput = {},
+            onDismissVoiceInput = {},
+            onMicrophonePermissionAction = {},
             onDraftQueryChange = {},
             onSearch = {},
             onClearSearch = {},
@@ -410,3 +494,18 @@ internal fun calculateTasksFabVisibilityAfterScroll(
     scrollDelta > 0f -> true
     else -> currentVisibility
 }
+
+internal fun shouldShowTasksFab(
+    isContentLoaded: Boolean,
+    isEditorVisible: Boolean,
+    voiceInput: TasksVoiceInputUiState,
+    isVisibleByScroll: Boolean,
+): Boolean {
+    val isRecording = voiceInput is TasksVoiceInputUiState.Recording
+    return isContentLoaded &&
+        !isEditorVisible &&
+        (!voiceInput.isBusy || isRecording) &&
+        (isVisibleByScroll || isRecording)
+}
+
+private const val VOICE_PROCESSING_CONTENT_ALPHA = 0.6f
