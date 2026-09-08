@@ -1,6 +1,13 @@
 package dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
+import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppMotion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -91,30 +98,44 @@ fun TaskRow(
                     },
                 enabled = !isStatusSaving,
             )
-            Text(
-                text = task.title,
+            AnimatedContent(
+                targetState = isTitleExpanded,
                 modifier = Modifier
                     .weight(1f)
                     .alpha(if (task.isCompleted) COMPLETED_TASK_ALPHA else 1f),
-                color = if (task.isCompleted) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onSurface
+                contentAlignment = Alignment.TopStart,
+                transitionSpec = {
+                    (fadeIn(tween(NotesAppMotion.textExpansionMillis)) togetherWith
+                        fadeOut(tween(NotesAppMotion.textExpansionMillis)))
+                        .using(SizeTransform { _, _ ->
+                            tween(NotesAppMotion.textExpansionMillis)
+                        })
                 },
-                textDecoration = if (task.isCompleted) {
-                    TextDecoration.LineThrough
-                } else {
-                    TextDecoration.None
-                },
-                maxLines = if (isTitleExpanded) Int.MAX_VALUE else COLLAPSED_TITLE_MAX_LINES,
-                overflow = TextOverflow.Ellipsis,
-                onTextLayout = { result ->
-                    if (!isTitleExpanded) {
-                        isTitleOverflowing = result.hasVisualOverflow
-                    }
-                },
-                style = MaterialTheme.typography.bodyLarge,
-            )
+                label = "taskTitleExpansion",
+            ) { expanded ->
+                Text(
+                    text = task.title,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = if (task.isCompleted) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    textDecoration = if (task.isCompleted) {
+                        TextDecoration.LineThrough
+                    } else {
+                        TextDecoration.None
+                    },
+                    maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_TITLE_MAX_LINES,
+                    overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { result ->
+                        if (!expanded) {
+                            isTitleOverflowing = result.hasVisualOverflow
+                        }
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
             TaskOverflowMenu(
                 menuContentDescription = actionsContentDescription,
                 editLabel = editLabel,

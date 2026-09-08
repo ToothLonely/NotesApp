@@ -1,5 +1,6 @@
 package dev.toothlonely.notesapp.feature.notes.impl.domain.usecase
 
+import dev.toothlonely.notesapp.core.domain.search.FuzzySearch
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.Note
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesSortOrder
 
@@ -19,7 +20,6 @@ class NoteListProcessor {
         val normalizedQuery = appliedQuery.trim().lowercase()
         if (normalizedQuery.isBlank()) return notes.sortedWith(comparator)
 
-        val queryWords = normalizedQuery.toWords()
         val exactTitleMatches = mutableListOf<Note>()
         val fuzzyTitleMatches = mutableListOf<Note>()
         val exactContentMatches = mutableListOf<Note>()
@@ -29,9 +29,9 @@ class NoteListProcessor {
             val normalizedContent = note.content.lowercase()
             when {
                 normalizedTitle.contains(normalizedQuery) -> exactTitleMatches += note
-                normalizedTitle.fuzzyContains(queryWords) -> fuzzyTitleMatches += note
+                FuzzySearch.matches(normalizedTitle, normalizedQuery) -> fuzzyTitleMatches += note
                 normalizedContent.contains(normalizedQuery) -> exactContentMatches += note
-                normalizedContent.fuzzyContains(queryWords) -> fuzzyContentMatches += note
+                FuzzySearch.matches(normalizedContent, normalizedQuery) -> fuzzyContentMatches += note
             }
         }
         return buildList(notes.size) {
@@ -42,26 +42,4 @@ class NoteListProcessor {
         }
     }
 
-    private fun String.fuzzyContains(queryWords: List<String>): Boolean {
-        if (queryWords.isEmpty()) return false
-
-        val candidateWords = toWords()
-        return queryWords.all { queryWord ->
-            candidateWords.any { candidateWord ->
-                candidateWord.contains(queryWord) ||
-                    queryWord.length >= MINIMUM_FUZZY_QUERY_LENGTH &&
-                    isFuzzySubsequence(queryWord, candidateWord)
-            }
-        }
-    }
-
-    private fun String.toWords(): List<String> = WORD_REGEX
-        .findAll(this)
-        .map(MatchResult::value)
-        .toList()
-
-    private companion object {
-        const val MINIMUM_FUZZY_QUERY_LENGTH = 3
-        val WORD_REGEX = Regex("[\\p{L}\\p{N}]+")
-    }
 }
