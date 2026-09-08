@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="tasks_voice_inappropriate_input">Не шали!</string>
     <string name="tasks_title">Задачи</string>
     <string name="tasks_loading">Загружаем задачи…</string>
     <string name="tasks_empty_title">Задач пока нет</string>

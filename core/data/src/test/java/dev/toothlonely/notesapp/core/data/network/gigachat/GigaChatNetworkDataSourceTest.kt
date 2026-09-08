@@ -47,6 +47,42 @@ class GigaChatNetworkDataSourceTest {
         assertTrue(request.contains("\"role\":\"system\""))
         assertTrue(request.contains("\"role\":\"user\""))
         assertTrue(request.contains("купи молоко"))
+        assertTrue(request.contains("__TASK_INPUT_REJECTED__"))
+    }
+
+    @Test
+    fun `rejection marker and provider blacklist are mapped to inappropriate input`() = runTest {
+        val responses = listOf(
+            """{"choices":[{"message":{"role":"assistant","content":" __TASK_INPUT_REJECTED__ "},"finish_reason":"stop"}]}""",
+            """{"choices":[{"message":{"role":"assistant","content":"Не могу ответить"},"finish_reason":"blacklist"}]}""",
+        )
+        responses.forEach { response ->
+            val api = FakeGigaChatApi().apply {
+                chatResponse = Response.success(response.toResponseBody())
+            }
+            val error = runCatching {
+                RetrofitGigaChatNetworkDataSource(api, json).formulateTask("token", "вход")
+            }.exceptionOrNull() as GigaChatException
+            assertEquals(GigaChatFailure.InappropriateInput, error.failure)
+        }
+    }
+
+    @Test
+    fun `empty and truncated responses are invalid rather than inappropriate`() = runTest {
+        val responses = listOf(
+            """{"choices":[]}""",
+            """{"choices":[{"message":{"role":"assistant","content":" "}}]}""",
+            """{"choices":[{"message":{"role":"assistant","content":"Купить"},"finish_reason":"length"}]}""",
+        )
+        responses.forEach { response ->
+            val api = FakeGigaChatApi().apply {
+                chatResponse = Response.success(response.toResponseBody())
+            }
+            val error = runCatching {
+                RetrofitGigaChatNetworkDataSource(api, json).formulateTask("token", "вход")
+            }.exceptionOrNull() as GigaChatException
+            assertEquals(GigaChatFailure.InvalidResponse, error.failure)
+        }
     }
 
     @Test

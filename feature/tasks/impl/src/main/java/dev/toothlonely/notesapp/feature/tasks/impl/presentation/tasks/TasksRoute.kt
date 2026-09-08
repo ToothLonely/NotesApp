@@ -195,6 +195,7 @@ private val TasksVoiceFailure.messageResource: Int
             SpeechRecognitionFailure.Unknown -> R.string.tasks_voice_speech_error
         }
         TasksVoiceFailure.GigaChat -> R.string.tasks_voice_gigachat_error
+        TasksVoiceFailure.InappropriateInput -> R.string.tasks_voice_inappropriate_input
         TasksVoiceFailure.Storage -> R.string.tasks_voice_storage_error
     }
 

@@ -42,4 +42,5 @@ internal data class NetworkChatResponse(
 @Serializable
 internal data class NetworkChatChoice(
     val message: NetworkChatMessage,
+    @SerialName("finish_reason") val finishReason: String? = null,
 )
