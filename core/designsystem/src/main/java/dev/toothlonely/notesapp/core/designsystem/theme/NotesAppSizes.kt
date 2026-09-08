@@ -5,6 +5,7 @@ import androidx.compose.ui.unit.dp
 object NotesAppSizes {
     val minimumTouchTarget = 48.dp
     val standardIcon = 24.dp
+    val splashIcon = 144.dp
     val emptyStateIcon = 64.dp
     val topAppBarMinimumHeight = 64.dp
     val searchFieldHeight = 56.dp

@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -36,6 +39,7 @@ import dev.toothlonely.notesapp.navigation.AppDestination
 import dev.toothlonely.notesapp.navigation.rememberAppNavigationState
 import dev.toothlonely.notesapp.navigation.toEntries
 import dev.toothlonely.notesapp.ui.components.NotesBottomNavigationBar
+import dev.toothlonely.notesapp.ui.components.AnimatedSplashScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -47,6 +51,7 @@ fun NotesApp(
         themeMode = userPreferences.themeMode.toDesignSystemThemeMode(),
         accentPalette = userPreferences.accentPreset.toDesignSystemAccentPalette(),
     ) {
+        var isSplashVisible by rememberSaveable { mutableStateOf(true) }
         val navigationState = rememberAppNavigationState()
         val notesDestinationState = remember { NotesDestinationState() }
         val density = LocalDensity.current
@@ -69,42 +74,52 @@ fun NotesApp(
         }
         val showBottomNavigation = navigationState.shouldShowBottomNavigation
 
-        SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
-            CompositionLocalProvider(LocalNoteTransitionScope provides this) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                ) {
-                    NavDisplay(
-                        entries = navigationState.toEntries(entryProvider),
-                        onBack = navigationState::goBack,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-
-                    if (showBottomNavigation) {
-                        NotesBottomNavigationBar(
-                            selectedDestination = navigationState.selectedDestination,
-                            onSelectDestination = { destination ->
-                                navigationState.selectDestination(destination) { deactivatedDestination ->
-                                    if (deactivatedDestination == AppDestination.Notes) {
-                                        notesDestinationState.deactivate()
-                                    }
-                                }
-                            },
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(
-                                    horizontal = NotesAppSizes
-                                        .floatingBottomNavigationHorizontalMargin,
-                                )
-                                .windowInsetsPadding(
-                                    WindowInsets.navigationBars.only(WindowInsetsSides.Bottom),
-                                )
-                                .padding(bottom = NotesAppSizes.floatingBottomNavigationBottomGap),
+        Box(modifier = Modifier.fillMaxSize()) {
+            SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+                CompositionLocalProvider(LocalNoteTransitionScope provides this) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                    ) {
+                        NavDisplay(
+                            entries = navigationState.toEntries(entryProvider),
+                            onBack = navigationState::goBack,
+                            modifier = Modifier.fillMaxSize(),
                         )
+
+                        if (showBottomNavigation) {
+                            NotesBottomNavigationBar(
+                                selectedDestination = navigationState.selectedDestination,
+                                onSelectDestination = { destination ->
+                                    navigationState.selectDestination(destination) { deactivatedDestination ->
+                                        if (deactivatedDestination == AppDestination.Notes) {
+                                            notesDestinationState.deactivate()
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(
+                                        horizontal = NotesAppSizes
+                                            .floatingBottomNavigationHorizontalMargin,
+                                    )
+                                    .windowInsetsPadding(
+                                        WindowInsets.navigationBars.only(WindowInsetsSides.Bottom),
+                                    )
+                                    .padding(
+                                        bottom = NotesAppSizes.floatingBottomNavigationBottomGap,
+                                    ),
+                            )
+                        }
                     }
                 }
+            }
+
+            if (isSplashVisible) {
+                AnimatedSplashScreen(
+                    onAnimationFinished = { isSplashVisible = false },
+                )
             }
         }
     }
