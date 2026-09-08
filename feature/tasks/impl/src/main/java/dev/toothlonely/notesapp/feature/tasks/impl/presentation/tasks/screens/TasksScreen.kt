@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.toothlonely.notesapp.core.designsystem.R as DesignSystemR
 import dev.toothlonely.notesapp.core.designsystem.component.AppSearchField
+import dev.toothlonely.notesapp.core.designsystem.component.BottomNavigationAwareSnackbarHost
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppShapes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSizes
 import dev.toothlonely.notesapp.core.designsystem.theme.NotesAppSpacing
@@ -123,6 +124,7 @@ fun TasksScreen(
         state.content is TasksContentState.Content
     val isEditorVisible = state.editor != null
     val isCreatingTask = state.editor?.taskId == null && isEditorVisible
+    val isFloatingActionButtonVisible = loadedContent && state.editor == null && isFabVisible
 
     SideEffect {
         if (
@@ -155,10 +157,16 @@ fun TasksScreen(
                 onSortOrderChange = onSortOrderChange,
             )
         },
-        snackbarHost = snackbarHost,
+        snackbarHost = {
+            BottomNavigationAwareSnackbarHost(
+                bottomNavigationPadding = bottomNavigationPadding,
+                isFloatingActionButtonVisible = isFloatingActionButtonVisible,
+                snackbarHost = snackbarHost,
+            )
+        },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = loadedContent && state.editor == null && isFabVisible,
+                visible = isFloatingActionButtonVisible,
                 enter = slideInVertically { fullHeight -> fullHeight } + fadeIn(),
                 exit = slideOutVertically { fullHeight -> fullHeight } + fadeOut(),
             ) {
