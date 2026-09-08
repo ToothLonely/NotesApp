@@ -44,6 +44,7 @@ fun SettingsScreen(
     onThemeModeSelected: (ThemeMode) -> Unit,
     onAccentPresetSelected: (AccentPreset) -> Unit,
     onRetryPreferences: () -> Unit,
+    onRetryBalance: () -> Unit,
     onRequestReset: () -> Unit,
     onCancelReset: () -> Unit,
     onConfirmReset: () -> Unit,
@@ -82,7 +83,10 @@ fun SettingsScreen(
                     .padding(bottomNavigationPadding)
                     .padding(bottom = NotesAppSpacing.space6),
             ) {
-                GigaChatBalanceCard(state = state.balanceState)
+                GigaChatBalanceCard(
+                    state = state.balanceState,
+                    onRetry = onRetryBalance,
+                )
                 when (val preferencesState = state.preferencesState) {
                     SettingsPreferencesUiState.Loading -> SettingsPreferencesLoadingScreen(
                         modifier = Modifier.padding(top = NotesAppSpacing.space6),
@@ -128,6 +132,7 @@ private fun SettingsScreenPreview() {
             onThemeModeSelected = {},
             onAccentPresetSelected = {},
             onRetryPreferences = {},
+            onRetryBalance = {},
             onRequestReset = {},
             onCancelReset = {},
             onConfirmReset = {},
