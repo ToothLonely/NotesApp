@@ -372,6 +372,14 @@ private class FakeNotesDao(
 
     override fun observeNotes(): Flow<List<NoteEntity>> = notes
 
+    override fun observeNewestNotes(limit: Int): Flow<List<NoteEntity>> = notes.map {
+        it.sortedWith(compareByDescending<NoteEntity> { note -> note.updatedAtMillis }.thenByDescending { note -> note.id }).take(limit)
+    }
+
+    override fun observeOldestNotes(limit: Int): Flow<List<NoteEntity>> = notes.map {
+        it.sortedWith(compareBy<NoteEntity> { note -> note.updatedAtMillis }.thenBy { note -> note.id }).take(limit)
+    }
+
     override fun observeNote(noteId: Long): Flow<NoteEntity?> = notes.map { notes ->
         notes.find { it.id == noteId }
     }

@@ -91,6 +91,8 @@ sealed interface TasksVoiceFailure {
 
     data object GigaChat : TasksVoiceFailure
 
+    data object InappropriateInput : TasksVoiceFailure
+
     data object Storage : TasksVoiceFailure
 }
 

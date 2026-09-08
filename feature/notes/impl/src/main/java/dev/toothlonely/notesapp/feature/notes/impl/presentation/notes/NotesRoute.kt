@@ -61,6 +61,7 @@ fun NotesRoute(
         onOpenNote = onOpenNote,
         onDraftQueryChange = viewModel::updateDraftQuery,
         onSearch = viewModel::applySearch,
+        onLoadMore = viewModel::loadMore,
         onClearSearch = viewModel::clearSearch,
         onSortOrderChange = viewModel::changeSortOrder,
         onViewModeChange = viewModel::changeViewMode,

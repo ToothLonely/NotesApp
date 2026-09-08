@@ -29,6 +29,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -82,6 +84,7 @@ fun NotesScreen(
     onRetryDelete: () -> Unit,
     onDismissDeleteError: () -> Unit,
     onRetryLoading: () -> Unit,
+    onLoadMore: () -> Unit = {},
     loadImage: suspend (String, Boolean, Int, Int) -> ImageBitmap?,
     snackbarHost: @Composable () -> Unit,
     modifier: Modifier = Modifier,
@@ -97,6 +100,23 @@ fun NotesScreen(
     val bottomNavigationInset = bottomNavigationPadding.calculateBottomPadding()
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
+    fun resetScroll() {
+        listState.requestScrollToItem(0)
+        gridState.requestScrollToItem(0)
+    }
+    val notesContent = state.content as? NotesContentState.Content
+    LaunchedEffect(state.viewMode, notesContent?.notes?.size, notesContent?.hasMore) {
+        if (notesContent?.hasMore != true) return@LaunchedEffect
+        snapshotFlow {
+            val lastVisible = when (state.viewMode) {
+                NotesViewMode.List -> listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                NotesViewMode.Grid -> gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+            }
+            lastVisible != null && lastVisible >= notesContent.notes.size - NOTES_PREFETCH_DISTANCE
+        }.distinctUntilChanged().collect { nearEnd ->
+            if (nearEnd) onLoadMore()
+        }
+    }
     var isFabVisible by remember { mutableStateOf(true) }
     val fabVisibilityScrollConnection = remember {
         object : NestedScrollConnection {
@@ -159,7 +179,10 @@ fun NotesScreen(
                 gridStateDescription = stringResource(R.string.notes_view_mode_grid),
                 enterDeleteModeLabel = stringResource(R.string.notes_enter_delete_mode),
                 exitDeleteModeLabel = stringResource(R.string.notes_exit_delete_mode),
-                onSortOrderChange = onSortOrderChange,
+                onSortOrderChange = { sortOrder ->
+                    resetScroll()
+                    onSortOrderChange(sortOrder)
+                },
                 onViewModeChange = onViewModeChange,
                 onToggleDeleteMode = onToggleDeleteMode,
             )
@@ -213,9 +236,18 @@ fun NotesScreen(
                     placeholder = stringResource(R.string.notes_search_placeholder),
                     searchContentDescription = stringResource(R.string.notes_search),
                     clearContentDescription = stringResource(R.string.notes_clear_search),
-                    onQueryChange = onDraftQueryChange,
-                    onSearch = onSearch,
-                    onClear = onClearSearch,
+                    onQueryChange = { query ->
+                        if (query.isEmpty()) resetScroll()
+                        onDraftQueryChange(query)
+                    },
+                    onSearch = {
+                        resetScroll()
+                        onSearch()
+                    },
+                    onClear = {
+                        resetScroll()
+                        onClearSearch()
+                    },
                     modifier = Modifier.padding(top = NotesAppSpacing.space2),
                 )
                 if (state.isDeleteMode && state.failedDeleteNoteId != null) {
@@ -250,6 +282,7 @@ fun NotesScreen(
                         bottom = bottomNavigationInset,
                     )
                     when (val content = state.content) {
+                        NotesContentState.SearchPending -> Unit
 
                         NotesContentState.Loading -> NotesLoadingScreen(
                             label = stringResource(R.string.notes_loading),
@@ -378,3 +411,5 @@ internal fun shouldHandleNotesRevision(
     notesRevision: Long,
     handledNotesRevision: Long,
 ): Boolean = notesRevision != 0L && notesRevision != handledNotesRevision
+
+private const val NOTES_PREFETCH_DISTANCE = 5

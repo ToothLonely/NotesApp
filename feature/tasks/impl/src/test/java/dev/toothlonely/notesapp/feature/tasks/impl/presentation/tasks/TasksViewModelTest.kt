@@ -492,6 +492,33 @@ class TasksViewModelTest {
     }
 
     @Test
+    fun `inappropriate voice input exposes dedicated message without saving or retrying`() = runTest {
+        val repository = FakeTasksRepository()
+        val speech = FakeSpeechRecognitionRepository()
+        val gigaChat = FakeGigaChatRepository().apply {
+            formulationFailure = dev.toothlonely.notesapp.core.domain.repository.GigaChatException(
+                dev.toothlonely.notesapp.core.domain.repository.GigaChatFailure.InappropriateInput,
+            )
+        }
+        val viewModel = createViewModel(repository, speech, gigaChat)
+        runCurrent()
+        viewModel.startVoiceInput()
+        speech.emit(SpeechRecognitionEvent.Result("неподобающий запрос"))
+        runCurrent()
+        assertEquals(
+            TasksVoiceInputUiState.Error(TasksVoiceFailure.InappropriateInput),
+            viewModel.state.value.voiceInput,
+        )
+        assertTrue(repository.createdTasks.isEmpty())
+        viewModel.retryVoiceProcessing()
+        runCurrent()
+        assertEquals(1, gigaChat.formulationRequests.size)
+        assertTrue(repository.createdTasks.isEmpty())
+        viewModel.dismissVoiceInputMessage()
+        assertEquals(TasksVoiceInputUiState.Idle, viewModel.state.value.voiceInput)
+    }
+
+    @Test
     fun `storage failure retries formulated title without another GigaChat request`() = runTest {
         val repository = FakeTasksRepository().apply {
             createFailure = IllegalStateException("Database failed")

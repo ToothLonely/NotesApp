@@ -20,5 +20,6 @@ enum class GigaChatFailure {
     RateLimited,
     Network,
     InvalidResponse,
+    InappropriateInput,
     Service,
 }

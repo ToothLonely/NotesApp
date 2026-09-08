@@ -3,6 +3,8 @@ package dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.toothlonely.notesapp.core.domain.repository.GigaChatRepository
+import dev.toothlonely.notesapp.core.domain.repository.GigaChatException
+import dev.toothlonely.notesapp.core.domain.repository.GigaChatFailure
 import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionEvent
 import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionRepository
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.NewTask
@@ -150,6 +152,7 @@ class TasksViewModel(
         val error = _state.value.voiceInput as? TasksVoiceInputUiState.Error ?: return
         when (error.failure) {
             is TasksVoiceFailure.Speech -> Unit
+            TasksVoiceFailure.InappropriateInput -> Unit
             TasksVoiceFailure.GigaChat -> error.recognizedText?.let(::formulateAndSaveVoiceTask)
             TasksVoiceFailure.Storage -> error.formulatedTitle?.let(::saveFormulatedVoiceTask)
         }
@@ -437,12 +440,15 @@ class TasksViewModel(
                 gigaChatRepository.formulateTask(normalizedText)
             } catch (error: CancellationException) {
                 throw error
-            } catch (_: Throwable) {
+            } catch (error: Throwable) {
+                val rejected = error is GigaChatException &&
+                    error.failure == GigaChatFailure.InappropriateInput
                 _state.update { state ->
                     state.copy(
                         voiceInput = TasksVoiceInputUiState.Error(
-                            failure = TasksVoiceFailure.GigaChat,
-                            recognizedText = normalizedText,
+                            failure = if (rejected) TasksVoiceFailure.InappropriateInput
+                                else TasksVoiceFailure.GigaChat,
+                            recognizedText = normalizedText.takeUnless { rejected },
                         ),
                     )
                 }

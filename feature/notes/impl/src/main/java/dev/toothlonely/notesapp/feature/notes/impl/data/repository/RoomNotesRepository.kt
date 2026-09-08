@@ -6,6 +6,7 @@ import dev.toothlonely.notesapp.feature.notes.impl.domain.model.Note
 import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NoteImageStorage
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NoteImageUpdate
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NoteUpdate
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesSortOrder
 import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NotesRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,15 @@ class RoomNotesRepository(
 
     override fun observeNotes(): Flow<List<Note>> = notesDao.observeNotes().map { notes ->
         notes.map { it.asDomainModel() }
+    }
+
+    override fun observeNotesWindow(limit: Int, sortOrder: NotesSortOrder): Flow<List<Note>> {
+        require(limit > 0)
+        val notes = when (sortOrder) {
+            NotesSortOrder.NewestFirst -> notesDao.observeNewestNotes(limit)
+            NotesSortOrder.OldestFirst -> notesDao.observeOldestNotes(limit)
+        }
+        return notes.map { entities -> entities.map { it.asDomainModel() } }
     }
 
     override fun observeNote(noteId: Long): Flow<Note?> = notesDao.observeNote(noteId).map { note ->
