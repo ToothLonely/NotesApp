@@ -76,15 +76,5 @@ class DataStoreUserPreferencesRepository(
     }
 }
 
-private data class PendingPreferences(
-    val themeMode: PendingValue<ThemeMode>? = null,
-    val accentPreset: PendingValue<AccentPreset>? = null,
-)
-
-private data class PendingValue<T>(
-    val operationId: Long,
-    val value: T,
-)
-
 private fun <T> PendingValue<T>?.unlessOperation(operationId: Long): PendingValue<T>? =
     if (this?.operationId == operationId) null else this
