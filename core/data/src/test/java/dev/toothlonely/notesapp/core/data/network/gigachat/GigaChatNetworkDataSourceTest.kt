@@ -47,24 +47,36 @@ class GigaChatNetworkDataSourceTest {
         assertTrue(request.contains("\"role\":\"system\""))
         assertTrue(request.contains("\"role\":\"user\""))
         assertTrue(request.contains("купи молоко"))
-        assertTrue(request.contains("__TASK_INPUT_REJECTED__"))
     }
 
     @Test
-    fun `rejection marker and provider blacklist are mapped to inappropriate input`() = runTest {
-        val responses = listOf(
-            """{"choices":[{"message":{"role":"assistant","content":" __TASK_INPUT_REJECTED__ "},"finish_reason":"stop"}]}""",
-            """{"choices":[{"message":{"role":"assistant","content":"Не могу ответить"},"finish_reason":"blacklist"}]}""",
-        )
-        responses.forEach { response ->
-            val api = FakeGigaChatApi().apply {
-                chatResponse = Response.success(response.toResponseBody())
-            }
-            val error = runCatching {
-                RetrofitGigaChatNetworkDataSource(api, json).formulateTask("token", "вход")
-            }.exceptionOrNull() as GigaChatException
-            assertEquals(GigaChatFailure.InappropriateInput, error.failure)
+    fun `provider blacklist is mapped to inappropriate input`() = runTest {
+        val api = FakeGigaChatApi().apply {
+            chatResponse = Response.success(
+                """{"choices":[{"message":{"role":"assistant","content":"Не могу ответить"},"finish_reason":"blacklist"}]}"""
+                    .toResponseBody(),
+            )
         }
+        val error = runCatching {
+            RetrofitGigaChatNetworkDataSource(api, json).formulateTask("token", "вход")
+        }.exceptionOrNull() as GigaChatException
+
+        assertEquals(GigaChatFailure.InappropriateInput, error.failure)
+    }
+
+    @Test
+    fun `ordinary stop response is returned without local content classification`() = runTest {
+        val api = FakeGigaChatApi().apply {
+            chatResponse = Response.success(
+                """{"choices":[{"message":{"role":"assistant","content":"Сходить в магазин"},"finish_reason":"stop"}]}"""
+                    .toResponseBody(),
+            )
+        }
+
+        assertEquals(
+            "Сходить в магазин",
+            RetrofitGigaChatNetworkDataSource(api, json).formulateTask("token", "надо в магазин"),
+        )
     }
 
     @Test
