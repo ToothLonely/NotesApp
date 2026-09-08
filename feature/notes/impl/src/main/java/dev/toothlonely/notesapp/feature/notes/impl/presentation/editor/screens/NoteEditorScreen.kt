@@ -24,7 +24,10 @@ import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEdito
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorMode
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorUiState
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteEditorSaveError
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.NoteVoiceInputUiState
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.isBusy
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.feedback.CameraPermissionDialog
+import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.feedback.MicrophonePermissionDialog
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.action.EditNoteFab
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.topbar.NoteEditorTopBar
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.topbar.NoteReadingTopBar
@@ -45,7 +48,12 @@ fun NoteEditorScreen(
     onDismissAttachmentError: () -> Unit,
     onCameraPermissionAction: () -> Unit,
     onDismissCameraPermission: () -> Unit,
+    onStartVoiceInput: () -> Unit,
+    onStopVoiceInput: () -> Unit,
+    onDismissVoiceInput: () -> Unit,
+    onMicrophonePermissionAction: () -> Unit,
     onBack: () -> Unit,
+    snackbarHost: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val content = state as? NoteEditorUiState.Content
@@ -123,7 +131,8 @@ fun NoteEditorScreen(
                 enabled = content?.isSaving == false && content.isClosing.not(),
                 attachmentActionsEnabled = content?.isSaving == false &&
                     content.isProcessingImage.not() &&
-                    content.isClosing.not(),
+                    content.isClosing.not() &&
+                    content.voiceInput.isBusy.not(),
                 loadImage = loadImage,
                 onImageLoadError = {
                     content?.image?.let { image ->
@@ -136,6 +145,7 @@ fun NoteEditorScreen(
                 onBack = onBack,
             )
         },
+        snackbarHost = snackbarHost,
         floatingActionButton = {
             if (isReading) EditNoteFab(
                 label = stringResource(R.string.note_edit),
@@ -207,9 +217,12 @@ fun NoteEditorScreen(
                         hasSaveError = state.saveError != null,
                         isProcessingImage = state.isProcessingImage,
                         isSaveEnabled = state.isSaveEnabled,
+                        voiceInput = state.voiceInput,
                         onBodyChanged = onBodyChanged,
                         onSave = onSave,
                         onDismissAttachmentError = onDismissAttachmentError,
+                        onStartVoiceInput = onStartVoiceInput,
+                        onStopVoiceInput = onStopVoiceInput,
                         modifier = Modifier
                             .widthIn(max = NotesAppSizes.maximumContentWidth)
                             .fillMaxSize()
@@ -230,6 +243,29 @@ fun NoteEditorScreen(
             dismissLabel = stringResource(R.string.note_camera_permission_cancel),
             onAction = onCameraPermissionAction,
             onDismiss = onDismissCameraPermission,
+        )
+    }
+
+    (content?.voiceInput as? NoteVoiceInputUiState.PermissionDenied)?.let { permission ->
+        MicrophonePermissionDialog(
+            title = stringResource(R.string.note_microphone_permission_title),
+            message = stringResource(
+                if (permission.canRequestAgain) {
+                    R.string.note_microphone_permission_denied
+                } else {
+                    R.string.note_microphone_permission_permanently_denied
+                },
+            ),
+            actionLabel = stringResource(
+                if (permission.canRequestAgain) {
+                    R.string.note_microphone_permission_retry
+                } else {
+                    R.string.note_microphone_permission_settings
+                },
+            ),
+            dismissLabel = stringResource(R.string.note_microphone_permission_cancel),
+            onAction = onMicrophonePermissionAction,
+            onDismiss = onDismissVoiceInput,
         )
     }
 }
@@ -258,7 +294,12 @@ private fun NoteEditorScreenPreview() {
             onDismissAttachmentError = {},
             onCameraPermissionAction = {},
             onDismissCameraPermission = {},
+            onStartVoiceInput = {},
+            onStopVoiceInput = {},
+            onDismissVoiceInput = {},
+            onMicrophonePermissionAction = {},
             onBack = {},
+            snackbarHost = {},
         )
     }
 }

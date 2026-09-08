@@ -2,6 +2,9 @@ package dev.toothlonely.notesapp.feature.notes.impl.presentation.editor
 
 import dev.toothlonely.notesapp.feature.notes.impl.testutil.FakeNotesRepository
 import dev.toothlonely.notesapp.feature.notes.impl.testutil.FakeNoteImageStorage
+import dev.toothlonely.notesapp.feature.notes.impl.testutil.FakeSpeechRecognitionRepository
+import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionEvent
+import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionFailure
 import dev.toothlonely.notesapp.feature.notes.impl.testutil.MainDispatcherRule
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NewNote
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.Note
@@ -18,6 +21,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -774,14 +778,137 @@ class NoteEditorViewModelTest {
         assertTrue(repository.createdNotes.isEmpty())
     }
 
+    @Test
+    fun `voice result is appended to existing body and recording blocks save`() = runTest {
+        val speech = FakeSpeechRecognitionRepository()
+        val viewModel = createViewModel(
+            repository = FakeNotesRepository(),
+            speechRecognitionRepository = speech,
+        )
+        runCurrent()
+        viewModel.onBodyChanged("Первый абзац")
+
+        viewModel.startVoiceInput()
+        advanceTimeBy(2_000)
+        runCurrent()
+
+        val recording = (viewModel.state.value as NoteEditorUiState.Content).voiceInput
+            as NoteVoiceInputUiState.Recording
+        assertEquals(2, recording.durationSeconds)
+        assertEquals(listOf("ru-RU"), speech.startedLocales)
+        assertFalse((viewModel.state.value as NoteEditorUiState.Content).isSaveEnabled)
+
+        speech.emit(SpeechRecognitionEvent.Result(" продолжение заметки "))
+        runCurrent()
+
+        val content = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals("Первый абзац продолжение заметки", content.body)
+        assertEquals(NoteVoiceInputUiState.Idle, content.voiceInput)
+        assertTrue(content.isSaveEnabled)
+    }
+
+    @Test
+    fun `stop switches voice input to processing and delegates once`() = runTest {
+        val speech = FakeSpeechRecognitionRepository()
+        val viewModel = createViewModel(
+            repository = FakeNotesRepository(),
+            speechRecognitionRepository = speech,
+        )
+        runCurrent()
+
+        viewModel.startVoiceInput()
+        viewModel.stopVoiceInput()
+        viewModel.stopVoiceInput()
+
+        assertEquals(1, speech.stopCount)
+        assertEquals(
+            NoteVoiceInputUiState.Processing,
+            (viewModel.state.value as NoteEditorUiState.Content).voiceInput,
+        )
+    }
+
+    @Test
+    fun `speech error preserves body and can be retried`() = runTest {
+        val speech = FakeSpeechRecognitionRepository()
+        val viewModel = createViewModel(
+            repository = FakeNotesRepository(),
+            speechRecognitionRepository = speech,
+        )
+        runCurrent()
+        viewModel.onBodyChanged("Сохранённый текст")
+        viewModel.startVoiceInput()
+
+        speech.emit(SpeechRecognitionEvent.Error(SpeechRecognitionFailure.Network))
+        runCurrent()
+
+        val failed = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals("Сохранённый текст", failed.body)
+        assertEquals(
+            NoteVoiceInputUiState.Error(SpeechRecognitionFailure.Network),
+            failed.voiceInput,
+        )
+
+        viewModel.startVoiceInput()
+
+        assertEquals(2, speech.startedLocales.size)
+        assertTrue(
+            (viewModel.state.value as NoteEditorUiState.Content).voiceInput
+                is NoteVoiceInputUiState.Recording,
+        )
+        viewModel.cancelVoiceInput()
+    }
+
+    @Test
+    fun `cancel ignores a stale recognition result`() = runTest {
+        val speech = FakeSpeechRecognitionRepository()
+        val viewModel = createViewModel(
+            repository = FakeNotesRepository(),
+            speechRecognitionRepository = speech,
+        )
+        runCurrent()
+        val cancelCountBeforeRecording = speech.cancelCount
+        viewModel.onBodyChanged("Исходный текст")
+        viewModel.startVoiceInput()
+
+        viewModel.cancelVoiceInput()
+        speech.emit(SpeechRecognitionEvent.Result("не добавлять"))
+        runCurrent()
+
+        val content = viewModel.state.value as NoteEditorUiState.Content
+        assertEquals("Исходный текст", content.body)
+        assertEquals(NoteVoiceInputUiState.Idle, content.voiceInput)
+        assertEquals(cancelCountBeforeRecording + 1, speech.cancelCount)
+    }
+
+    @Test
+    fun `microphone denial is represented without starting recognition`() = runTest {
+        val speech = FakeSpeechRecognitionRepository()
+        val viewModel = createViewModel(
+            repository = FakeNotesRepository(),
+            speechRecognitionRepository = speech,
+        )
+        runCurrent()
+
+        viewModel.onMicrophonePermissionDenied(canRequestAgain = false)
+
+        assertEquals(
+            NoteVoiceInputUiState.PermissionDenied(canRequestAgain = false),
+            (viewModel.state.value as NoteEditorUiState.Content).voiceInput,
+        )
+        assertTrue(speech.startedLocales.isEmpty())
+    }
+
     private fun createViewModel(
         repository: FakeNotesRepository,
         noteId: Long? = null,
         imageStorage: FakeNoteImageStorage = FakeNoteImageStorage(),
+        speechRecognitionRepository: FakeSpeechRecognitionRepository =
+            FakeSpeechRecognitionRepository(),
     ) = NoteEditorViewModel(
         args = NoteEditorArgs(noteId),
         notesRepository = repository,
         noteTitleGenerator = titleGenerator,
         imageStorage = imageStorage,
+        speechRecognitionRepository = speechRecognitionRepository,
     )
 }

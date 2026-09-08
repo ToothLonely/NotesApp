@@ -14,12 +14,14 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.ActivityCompat
@@ -28,6 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import dev.toothlonely.notesapp.feature.notes.impl.R
+import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionFailure
+import dev.toothlonely.notesapp.core.designsystem.component.AppSnackbarHost
 import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NoteImageStorage
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.attachment.ImageAttachmentActionsSheet
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.components.attachment.ImageSourceSheet
@@ -39,6 +43,7 @@ import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.screens.N
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.image.NoteImageLoader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.remember
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -58,6 +63,11 @@ fun NoteEditorRoute(
     val coroutineScope = rememberCoroutineScope()
     val state = viewModel.state.collectAsStateWithLifecycle()
     val content = state.value as? NoteEditorUiState.Content
+    val snackbarHostState = remember { SnackbarHostState() }
+    val voiceError = content?.voiceInput as? NoteVoiceInputUiState.Error
+    val voiceErrorMessage = voiceError?.let { error ->
+        stringResource(error.failure.messageResource)
+    }
     var attachmentSheet by rememberSaveable { mutableStateOf(AttachmentSheet.Hidden) }
     var cameraPermissionState by rememberSaveable {
         mutableStateOf(CameraPermissionUiState.Hidden)
@@ -123,6 +133,40 @@ fun NoteEditorRoute(
             }
         }
     }
+    val microphonePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            viewModel.dismissVoiceInputMessage()
+            viewModel.startVoiceInput()
+        } else {
+            val canRequestAgain = activity != null &&
+                ActivityCompat.shouldShowRequestPermissionRationale(
+                    activity,
+                    Manifest.permission.RECORD_AUDIO,
+                )
+            viewModel.onMicrophonePermissionDenied(canRequestAgain)
+        }
+    }
+    val requestVoiceInput: () -> Unit = {
+        val permissionGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO,
+        ) == PackageManager.PERMISSION_GRANTED
+        val shouldShowRationale = activity?.let { currentActivity ->
+            ActivityCompat.shouldShowRequestPermissionRationale(
+                currentActivity,
+                Manifest.permission.RECORD_AUDIO,
+            )
+        } == true
+        when {
+            permissionGranted -> viewModel.startVoiceInput()
+            shouldShowRationale -> viewModel.onMicrophonePermissionDenied(
+                canRequestAgain = true,
+            )
+            else -> microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
 
     BackHandler(
         enabled = content?.mode == NoteEditorMode.Editing ||
@@ -130,6 +174,10 @@ fun NoteEditorRoute(
             content?.isSaving == true,
     ) {
         viewModel.onBack()
+    }
+
+    DisposableEffect(viewModel) {
+        onDispose(viewModel::cancelVoiceInput)
     }
 
     LaunchedEffect(viewModel) {
@@ -142,6 +190,13 @@ fun NoteEditorRoute(
         }
     }
 
+    LaunchedEffect(voiceErrorMessage) {
+        if (voiceErrorMessage != null) {
+            snackbarHostState.showSnackbar(voiceErrorMessage)
+            viewModel.dismissVoiceInputMessage()
+        }
+    }
+
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (
             ContextCompat.checkSelfPermission(
@@ -150,6 +205,15 @@ fun NoteEditorRoute(
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             cameraPermissionState = CameraPermissionUiState.Hidden
+        }
+        if (
+            content?.voiceInput is NoteVoiceInputUiState.PermissionDenied &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO,
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            viewModel.dismissVoiceInputMessage()
         }
     }
 
@@ -183,7 +247,24 @@ fun NoteEditorRoute(
         onDismissCameraPermission = {
             cameraPermissionState = CameraPermissionUiState.Hidden
         },
+        onStartVoiceInput = requestVoiceInput,
+        onStopVoiceInput = viewModel::stopVoiceInput,
+        onDismissVoiceInput = viewModel::dismissVoiceInputMessage,
+        onMicrophonePermissionAction = {
+            val permission = content?.voiceInput as? NoteVoiceInputUiState.PermissionDenied
+            if (permission?.canRequestAgain == true) {
+                microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            } else {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:${context.packageName}"),
+                    ),
+                )
+            }
+        },
         onBack = viewModel::onBack,
+        snackbarHost = { AppSnackbarHost(hostState = snackbarHostState) },
     )
 
     if (attachmentSheet == AttachmentSheet.Source) {
@@ -248,6 +329,17 @@ fun NoteEditorRoute(
         )
     }
 }
+
+private val SpeechRecognitionFailure.messageResource: Int
+    get() = when (this) {
+        SpeechRecognitionFailure.Unavailable -> R.string.note_voice_unavailable
+        SpeechRecognitionFailure.NoSpeech -> R.string.note_voice_no_speech
+        SpeechRecognitionFailure.NoMatch -> R.string.note_voice_no_match
+        SpeechRecognitionFailure.Network -> R.string.note_voice_network_error
+        SpeechRecognitionFailure.Audio -> R.string.note_voice_audio_error
+        SpeechRecognitionFailure.Busy -> R.string.note_voice_busy_error
+        SpeechRecognitionFailure.Unknown -> R.string.note_voice_error
+    }
 
 private enum class AttachmentSheet {
     Hidden,

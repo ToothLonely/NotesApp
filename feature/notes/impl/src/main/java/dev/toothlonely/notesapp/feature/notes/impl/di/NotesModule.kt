@@ -37,6 +37,7 @@ val notesModule = module {
             notesRepository = get(),
             noteTitleGenerator = get(),
             imageStorage = get(),
+            speechRecognitionRepository = get(),
         )
     }
 }

@@ -64,4 +64,21 @@
     <string name="note_camera_permission_settings">Открыть настройки</string>
     <string name="note_camera_permission_dialog_title">Доступ к камере</string>
     <string name="note_camera_permission_cancel">Не сейчас</string>
+    <string name="note_voice_start">Начать голосовой ввод</string>
+    <string name="note_voice_stop">Остановить запись</string>
+    <string name="note_voice_recording">Запись голоса · %1$02d:%2$02d</string>
+    <string name="note_voice_processing">Распознаём речь…</string>
+    <string name="note_voice_unavailable">Распознавание речи недоступно на этом устройстве</string>
+    <string name="note_voice_no_speech">Речь не обнаружена</string>
+    <string name="note_voice_no_match">Не удалось распознать речь</string>
+    <string name="note_voice_network_error">Нет связи со службой распознавания речи</string>
+    <string name="note_voice_audio_error">Не удалось записать звук</string>
+    <string name="note_voice_busy_error">Служба распознавания занята</string>
+    <string name="note_voice_error">Ошибка распознавания речи</string>
+    <string name="note_microphone_permission_title">Доступ к микрофону</string>
+    <string name="note_microphone_permission_denied">Для голосового ввода нужен доступ к микрофону. Заметку можно продолжить редактировать без него.</string>
+    <string name="note_microphone_permission_permanently_denied">Доступ к микрофону запрещён. Разрешите его в настройках приложения, чтобы использовать голосовой ввод.</string>
+    <string name="note_microphone_permission_retry">Разрешить</string>
+    <string name="note_microphone_permission_settings">Открыть настройки</string>
+    <string name="note_microphone_permission_cancel">Не сейчас</string>
 </resources>

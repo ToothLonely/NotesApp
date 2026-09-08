@@ -2,6 +2,8 @@ package dev.toothlonely.notesapp.feature.notes.impl.presentation.editor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionEvent
+import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionRepository
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NewNote
 import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NoteImageStorage
 import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NoteImageStorageException
@@ -15,7 +17,9 @@ import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.Edi
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorArgs
 import dev.toothlonely.notesapp.feature.notes.impl.presentation.editor.model.NoteEditorMode
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,10 +33,12 @@ class NoteEditorViewModel(
     private val notesRepository: NotesRepository,
     private val noteTitleGenerator: NoteTitleGenerator,
     private val imageStorage: NoteImageStorage,
+    private val speechRecognitionRepository: SpeechRecognitionRepository,
 ) : ViewModel() {
     private var savedContent: SavedContent? = null
     private var nextImageOperationId = 0L
     private var activeImageOperationId: Long? = null
+    private var voiceTimerJob: Job? = null
 
     private val _state = MutableStateFlow<NoteEditorUiState>(
         NoteEditorUiState.Loading(isExistingNote = args.noteId != null),
@@ -43,6 +49,7 @@ class NoteEditorViewModel(
     val events = eventChannel.receiveAsFlow()
 
     init {
+        observeSpeechRecognition()
         prepareEditor()
     }
 
@@ -83,6 +90,57 @@ class NoteEditorViewModel(
         }
     }
 
+    fun startVoiceInput() {
+        val content = _state.value as? NoteEditorUiState.Content ?: return
+        if (
+            content.mode == NoteEditorMode.Reading ||
+            content.isSaving ||
+            content.isClosing ||
+            content.isProcessingImage ||
+            content.voiceInput.isBusy
+        ) {
+            return
+        }
+        _state.value = content.copy(
+            voiceInput = NoteVoiceInputUiState.Recording(),
+            saveError = null,
+        )
+        startVoiceTimer()
+        speechRecognitionRepository.start(VOICE_LOCALE_TAG)
+    }
+
+    fun stopVoiceInput() {
+        val content = _state.value as? NoteEditorUiState.Content ?: return
+        if (content.voiceInput !is NoteVoiceInputUiState.Recording) return
+        stopVoiceTimer()
+        _state.value = content.copy(voiceInput = NoteVoiceInputUiState.Processing)
+        speechRecognitionRepository.stop()
+    }
+
+    fun cancelVoiceInput() {
+        val content = _state.value as? NoteEditorUiState.Content ?: return
+        if (!content.voiceInput.isBusy) return
+        stopVoiceTimer()
+        speechRecognitionRepository.cancel()
+        _state.value = content.copy(voiceInput = NoteVoiceInputUiState.Idle)
+    }
+
+    fun onMicrophonePermissionDenied(canRequestAgain: Boolean) {
+        val content = _state.value as? NoteEditorUiState.Content ?: return
+        if (content.mode == NoteEditorMode.Reading || content.voiceInput.isBusy) return
+        _state.value = content.copy(
+            voiceInput = NoteVoiceInputUiState.PermissionDenied(canRequestAgain),
+        )
+    }
+
+    fun dismissVoiceInputMessage() {
+        _state.update { state ->
+            val content = state as? NoteEditorUiState.Content ?: return@update state
+            if (content.voiceInput.isBusy) state
+            else content.copy(voiceInput = NoteVoiceInputUiState.Idle)
+        }
+    }
+
     fun startEditing() {
         val content = _state.value as? NoteEditorUiState.Content ?: return
         if (content.mode != NoteEditorMode.Reading) return
@@ -105,6 +163,7 @@ class NoteEditorViewModel(
         if (content.isSaving || content.isClosing) return true
 
         val snapshot = savedContent ?: return false
+        cancelVoiceInput()
         activeImageOperationId = null
         discardStagedImage(content)
         _state.value = content.copy(
@@ -116,6 +175,7 @@ class NoteEditorViewModel(
             isProcessingImage = false,
             isClosing = false,
             attachmentError = null,
+            voiceInput = NoteVoiceInputUiState.Idle,
             isSaving = false,
             saveError = null,
         )
@@ -131,7 +191,8 @@ class NoteEditorViewModel(
             content.mode == NoteEditorMode.Reading ||
             content.isSaving ||
             content.isProcessingImage ||
-            content.isClosing
+            content.isClosing ||
+            content.voiceInput.isBusy
         ) {
             disposableSourceFileName?.let(::discardStagedFile)
             return
@@ -158,7 +219,8 @@ class NoteEditorViewModel(
             content.mode == NoteEditorMode.Reading ||
             content.isSaving ||
             content.isProcessingImage ||
-            content.isClosing
+            content.isClosing ||
+            content.voiceInput.isBusy
         ) return
         discardStagedImage(content)
         _state.value = content.copy(
@@ -210,6 +272,7 @@ class NoteEditorViewModel(
     fun onBack() {
         val content = _state.value as? NoteEditorUiState.Content
         if (content?.isSaving == true || content?.isClosing == true) return
+        cancelVoiceInput()
         if (cancelEditing()) return
         if (
             content?.mode == NoteEditorMode.Creating &&
@@ -266,6 +329,8 @@ class NoteEditorViewModel(
     }
 
     private fun prepareEditor() {
+        stopVoiceTimer()
+        speechRecognitionRepository.cancel()
         val noteId = args.noteId
         savedContent = null
         activeImageOperationId = null
@@ -273,6 +338,65 @@ class NoteEditorViewModel(
         viewModelScope.launch {
             loadEditor(noteId)
         }
+    }
+
+    private fun observeSpeechRecognition() {
+        viewModelScope.launch {
+            speechRecognitionRepository.events.collect(::handleSpeechRecognitionEvent)
+        }
+    }
+
+    private fun handleSpeechRecognitionEvent(event: SpeechRecognitionEvent) {
+        val content = _state.value as? NoteEditorUiState.Content ?: return
+        if (!content.voiceInput.isBusy && event !is SpeechRecognitionEvent.Listening) return
+        when (event) {
+            SpeechRecognitionEvent.Listening -> Unit
+            SpeechRecognitionEvent.Processing -> {
+                stopVoiceTimer()
+                _state.value = content.copy(voiceInput = NoteVoiceInputUiState.Processing)
+            }
+            is SpeechRecognitionEvent.Result -> {
+                stopVoiceTimer()
+                _state.value = content.copy(
+                    body = appendRecognizedText(content.body, event.text),
+                    voiceInput = NoteVoiceInputUiState.Idle,
+                )
+            }
+            is SpeechRecognitionEvent.Error -> {
+                stopVoiceTimer()
+                _state.value = content.copy(
+                    voiceInput = NoteVoiceInputUiState.Error(event.failure),
+                )
+            }
+            SpeechRecognitionEvent.Canceled -> {
+                stopVoiceTimer()
+                _state.value = content.copy(voiceInput = NoteVoiceInputUiState.Idle)
+            }
+        }
+    }
+
+    private fun startVoiceTimer() {
+        voiceTimerJob?.cancel()
+        voiceTimerJob = viewModelScope.launch {
+            while (true) {
+                delay(VOICE_TIMER_TICK_MILLIS)
+                _state.update { state ->
+                    val content = state as? NoteEditorUiState.Content ?: return@update state
+                    val recording = content.voiceInput as? NoteVoiceInputUiState.Recording
+                        ?: return@update state
+                    content.copy(
+                        voiceInput = recording.copy(
+                            durationSeconds = recording.durationSeconds + 1,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    private fun stopVoiceTimer() {
+        voiceTimerJob?.cancel()
+        voiceTimerJob = null
     }
 
     private suspend fun stageImage(
@@ -535,4 +659,25 @@ class NoteEditorViewModel(
             null,
                 -> NoteEditorAttachmentError.SelectedImageUnavailable
         }
+
+    override fun onCleared() {
+        stopVoiceTimer()
+        speechRecognitionRepository.close()
+        super.onCleared()
+    }
+
+    private companion object {
+        const val VOICE_LOCALE_TAG = "ru-RU"
+        const val VOICE_TIMER_TICK_MILLIS = 1_000L
+    }
+}
+
+internal fun appendRecognizedText(
+    body: String,
+    recognizedText: String,
+): String {
+    val appendedText = recognizedText.trim()
+    if (appendedText.isEmpty()) return body
+    if (body.isEmpty() || body.last().isWhitespace()) return body + appendedText
+    return "$body $appendedText"
 }
