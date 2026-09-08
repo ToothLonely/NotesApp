@@ -4,4 +4,5 @@ internal data class NotesContentSnapshot(
     val content: NotesContentState,
     val notesRevision: Long,
     val scrollToStart: Boolean,
+    val criteria: SearchCriteria,
 )

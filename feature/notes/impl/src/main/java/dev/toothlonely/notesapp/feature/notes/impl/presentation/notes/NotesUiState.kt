@@ -21,6 +21,8 @@ data class NotesUiState(
 )
 
 sealed interface NotesContentState {
+    data object SearchPending : NotesContentState
+
     data object Loading : NotesContentState
 
     data object Empty : NotesContentState
@@ -29,6 +31,8 @@ sealed interface NotesContentState {
 
     data class Content(
         val notes: List<Note>,
+        val hasMore: Boolean = false,
+        val visibleLimit: Int = NOTES_PAGE_SIZE,
     ) : NotesContentState
 
     data object Error : NotesContentState

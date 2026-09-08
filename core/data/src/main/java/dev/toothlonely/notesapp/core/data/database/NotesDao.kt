@@ -11,6 +11,12 @@ interface NotesDao {
     @Query("SELECT * FROM notes ORDER BY updated_at_millis DESC, id DESC")
     fun observeNotes(): Flow<List<NoteEntity>>
 
+    @Query("SELECT * FROM notes ORDER BY updated_at_millis DESC, id DESC LIMIT :limit")
+    fun observeNewestNotes(limit: Int): Flow<List<NoteEntity>>
+
+    @Query("SELECT * FROM notes ORDER BY updated_at_millis ASC, id ASC LIMIT :limit")
+    fun observeOldestNotes(limit: Int): Flow<List<NoteEntity>>
+
     @Query("SELECT * FROM notes WHERE id = :noteId")
     fun observeNote(noteId: Long): Flow<NoteEntity?>
 

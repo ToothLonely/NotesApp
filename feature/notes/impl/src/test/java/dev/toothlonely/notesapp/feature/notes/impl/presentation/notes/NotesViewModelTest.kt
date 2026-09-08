@@ -37,6 +37,90 @@ class NotesViewModelTest {
     }
 
     @Test
+    fun `pages append without duplicates or scrolling to start and stop at end`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = (1L..45L).map { note(it) }
+        }
+        val viewModel = createViewModel(repository)
+        collectState(viewModel)
+        runCurrent()
+        assertEquals(20, (viewModel.state.value.content as NotesContentState.Content).notes.size)
+        viewModel.loadMore()
+        viewModel.loadMore()
+        runCurrent()
+        val second = viewModel.state.value.content as NotesContentState.Content
+        assertEquals((45L downTo 6L).toList(), second.notes.map(Note::id))
+        assertTrue(second.hasMore)
+        assertFalse(viewModel.state.value.scrollToStartOnNotesRevision)
+        viewModel.loadMore()
+        runCurrent()
+        val last = viewModel.state.value.content as NotesContentState.Content
+        assertEquals(45, last.notes.size)
+        assertFalse(last.hasMore)
+        viewModel.loadMore()
+        runCurrent()
+        assertEquals(last, viewModel.state.value.content)
+        viewModel.changeSortOrder(NotesSortOrder.OldestFirst)
+        runCurrent()
+        assertEquals((1L..20L).toList(),
+            (viewModel.state.value.content as NotesContentState.Content).notes.map(Note::id))
+    }
+
+    @Test
+    fun `search finds notes outside loaded window and erasing draft restores first page`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = (1L..45L).map { note(it, title = if (it == 1L) "Покупки" else "Работа") }
+        }
+        val viewModel = createViewModel(repository)
+        collectState(viewModel)
+        runCurrent()
+        viewModel.updateDraftQuery("пкуп")
+        runCurrent()
+        assertEquals(NotesContentState.SearchPending, viewModel.state.value.content)
+        viewModel.applySearch()
+        runCurrent()
+        assertEquals(listOf(1L),
+            (viewModel.state.value.content as NotesContentState.Content).notes.map(Note::id))
+        viewModel.updateDraftQuery("")
+        runCurrent()
+        assertEquals(20, (viewModel.state.value.content as NotesContentState.Content).notes.size)
+    }
+
+    @Test
+    fun `failed append can be retried without skipping notes`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = (1L..45L).map { note(it) }
+        }
+        val viewModel = createViewModel(repository)
+        collectState(viewModel)
+        runCurrent()
+        repository.observeFailure = IllegalStateException("Read failed")
+        viewModel.loadMore()
+        runCurrent()
+        assertEquals(NotesContentState.Error, viewModel.state.value.content)
+        repository.observeFailure = null
+        viewModel.retryLoading()
+        runCurrent()
+        assertEquals((45L downTo 6L).toList(),
+            (viewModel.state.value.content as NotesContentState.Content).notes.map(Note::id))
+    }
+
+    @Test
+    fun `deletion in full window fills the gap without scrolling to start`() = runTest {
+        val repository = FakeNotesRepository().apply {
+            notes.value = (1L..45L).map { note(it) }
+        }
+        val viewModel = createViewModel(repository)
+        collectState(viewModel)
+        runCurrent()
+        repository.notes.value = repository.notes.value.filterNot { it.id == 45L }
+        runCurrent()
+        assertEquals((44L downTo 25L).toList(),
+            (viewModel.state.value.content as NotesContentState.Content).notes.map(Note::id))
+        assertFalse(viewModel.state.value.scrollToStartOnNotesRevision)
+    }
+
+    @Test
     fun `initialization requests orphan image cleanup`() = runTest {
         val repository = FakeNotesRepository()
 
@@ -279,7 +363,7 @@ class NotesViewModelTest {
     }
 
     @Test
-    fun `draft query does not filter until search and clear restores all notes`() = runTest {
+    fun `draft hides notes until search and clear restores all notes`() = runTest {
         val repository = FakeNotesRepository().apply {
             notes.value = listOf(
                 note(id = 1, title = "Работа"),
@@ -293,10 +377,7 @@ class NotesViewModelTest {
         viewModel.updateDraftQuery("покуп")
         runCurrent()
 
-        assertEquals(
-            listOf(2L, 1L),
-            (viewModel.state.value.content as NotesContentState.Content).notes.map(Note::id),
-        )
+        assertEquals(NotesContentState.SearchPending, viewModel.state.value.content)
         assertEquals("", viewModel.state.value.appliedQuery)
 
         viewModel.applySearch()
@@ -311,10 +392,7 @@ class NotesViewModelTest {
         viewModel.updateDraftQuery("другой черновик")
         runCurrent()
 
-        assertEquals(
-            listOf(2L),
-            (viewModel.state.value.content as NotesContentState.Content).notes.map(Note::id),
-        )
+        assertEquals(NotesContentState.SearchPending, viewModel.state.value.content)
 
         viewModel.clearSearch()
         runCurrent()

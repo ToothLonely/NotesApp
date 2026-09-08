@@ -4,6 +4,7 @@ import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NewNote
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.Note
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NoteUpdate
 import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NoteImageUpdate
+import dev.toothlonely.notesapp.feature.notes.impl.domain.model.NotesSortOrder
 import dev.toothlonely.notesapp.feature.notes.impl.domain.repository.NotesRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +41,11 @@ class FakeNotesRepository : NotesRepository {
         observeNoteFailure?.let { throw it }
         return notes.map { notes -> notes.find { it.id == noteId } }
     }
+
+    override fun observeNotesWindow(limit: Int, sortOrder: NotesSortOrder): Flow<List<Note>> =
+        observeNotes().map { notes ->
+            (if (sortOrder == NotesSortOrder.OldestFirst) notes.reversed() else notes).take(limit)
+        }
 
     override suspend fun nextGeneratedTitleNumber(): Int {
         preparationFailure?.let { throw it }

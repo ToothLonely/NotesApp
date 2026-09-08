@@ -24,14 +24,13 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class NotesViewModel(
@@ -43,8 +42,8 @@ class NotesViewModel(
     private val retryCount = MutableStateFlow(0)
     private val controlsState = MutableStateFlow(NotesControlsState())
     private val eventChannel = Channel<NotesEvent>(capacity = Channel.BUFFERED)
-    private val lastObservedNotesCount = AtomicInteger(UNINITIALIZED_NOTES_COUNT)
     private val notesRevision = AtomicLong(0L)
+    private val lastObservation = AtomicReference<Pair<SearchCriteria, List<Note>>?>(null)
 
     val events: Flow<NotesEvent> = eventChannel.receiveAsFlow()
 
@@ -56,7 +55,12 @@ class NotesViewModel(
         },
     ) { contentSnapshot, controls, viewMode ->
         NotesUiState(
-            content = contentSnapshot.content,
+            content = when {
+                controls.isSearchPending -> NotesContentState.SearchPending
+                contentSnapshot.criteria.appliedQuery != controls.appliedQuery ||
+                    contentSnapshot.criteria.sortOrder != controls.sortOrder -> NotesContentState.Loading
+                else -> contentSnapshot.content
+            },
             notesRevision = contentSnapshot.notesRevision,
             scrollToStartOnNotesRevision = contentSnapshot.scrollToStart,
             draftQuery = controls.draftQuery,
@@ -87,12 +91,23 @@ class NotesViewModel(
     }
 
     fun updateDraftQuery(query: String) {
-        controlsState.update { state -> state.copy(draftQuery = query) }
+        controlsState.update { state ->
+            if (query == state.draftQuery) state else state.copy(
+                draftQuery = query,
+                appliedQuery = if (query.isEmpty()) "" else state.appliedQuery,
+                isSearchPending = query.isNotEmpty(),
+                visibleLimit = NOTES_PAGE_SIZE,
+            )
+        }
     }
 
     fun applySearch() {
         controlsState.update { state ->
-            state.copy(appliedQuery = state.draftQuery.trim())
+            state.copy(
+                appliedQuery = state.draftQuery.trim(),
+                isSearchPending = state.draftQuery.isNotEmpty() && state.draftQuery.isBlank(),
+                visibleLimit = NOTES_PAGE_SIZE,
+            )
         }
     }
 
@@ -101,12 +116,23 @@ class NotesViewModel(
             state.copy(
                 draftQuery = "",
                 appliedQuery = "",
+                isSearchPending = false,
+                visibleLimit = NOTES_PAGE_SIZE,
             )
         }
     }
 
     fun changeSortOrder(sortOrder: NotesSortOrder) {
-        controlsState.update { state -> state.copy(sortOrder = sortOrder) }
+        controlsState.update { state -> state.copy(sortOrder = sortOrder, visibleLimit = NOTES_PAGE_SIZE) }
+    }
+
+    fun loadMore() {
+        val content = state.value.content as? NotesContentState.Content ?: return
+        controlsState.update { controls ->
+            if (!content.hasMore || controls.isSearchPending ||
+                controls.visibleLimit != content.visibleLimit
+            ) controls else controls.copy(visibleLimit = controls.visibleLimit + NOTES_PAGE_SIZE)
+        }
     }
 
     fun changeViewMode(viewMode: NotesViewMode) {
@@ -247,68 +273,69 @@ class NotesViewModel(
         controlsState.update { state -> state.copy(failedDeleteNoteId = null) }
     }
 
-    private fun observeNotesLoadState(): Flow<NotesLoadState> = retryCount
-        .flatMapLatest {
-            flow { emitAll(notesRepository.observeNotes()) }
-                .map<List<Note>, NotesLoadState> { notes ->
-                    val previousNotesCount = lastObservedNotesCount.getAndSet(notes.size)
-                    NotesLoadState.Loaded(
-                        notes = notes,
-                        notesRevision = notesRevision.incrementAndGet(),
-                        scrollToStart = previousNotesCount != UNINITIALIZED_NOTES_COUNT &&
-                            notes.size >= previousNotesCount,
-                    )
-                }
-                .onStart { emit(NotesLoadState.Loading) }
-                .catch { emit(NotesLoadState.Error) }
-        }
-
     private fun observeContentState(
         searchDispatcher: CoroutineDispatcher,
     ): Flow<NotesContentSnapshot> = combine(
-        observeNotesLoadState(),
+        retryCount,
         controlsState
             .map { controls ->
                 SearchCriteria(
                     appliedQuery = controls.appliedQuery,
                     sortOrder = controls.sortOrder,
+                    visibleLimit = controls.visibleLimit,
+                    isSearchPending = controls.isSearchPending,
                 )
             }
             .distinctUntilChanged(),
-    ) { notesLoadState, searchCriteria -> notesLoadState to searchCriteria }
-        .mapLatest { (notesLoadState, searchCriteria) ->
-            NotesContentSnapshot(
-                content = notesLoadState.toContentState(searchCriteria),
-                notesRevision = notesLoadState.notesRevision,
-                scrollToStart = notesLoadState.scrollToStart,
-            )
+    ) { _, criteria -> criteria }
+        .flatMapLatest { criteria ->
+            flow {
+                if (criteria.isSearchPending) {
+                    emit(NotesContentSnapshot(NotesContentState.SearchPending, 0L, false, criteria))
+                    return@flow
+                }
+                // Rank fuzzy matches globally before slicing; browsing uses a bounded Room query.
+                val source = if (criteria.appliedQuery.isEmpty()) {
+                    notesRepository.observeNotesWindow(criteria.visibleLimit + 1, criteria.sortOrder)
+                } else {
+                    notesRepository.observeNotes()
+                }
+                emitAll(source.map { notes ->
+                    val previous = lastObservation.getAndSet(criteria to notes)
+                        ?.takeIf { it.first == criteria }?.second
+                    val previousById = previous?.associateBy(Note::id).orEmpty()
+                    val matches = noteListProcessor.process(notes, criteria.appliedQuery, criteria.sortOrder)
+                    val content = when {
+                        matches.isNotEmpty() -> NotesContentState.Content(
+                            notes = matches.take(criteria.visibleLimit),
+                            hasMore = matches.size > criteria.visibleLimit,
+                            visibleLimit = criteria.visibleLimit,
+                        )
+                        criteria.appliedQuery.isNotEmpty() -> NotesContentState.SearchEmpty
+                        else -> NotesContentState.Empty
+                    }
+                    NotesContentSnapshot(
+                        content = content,
+                        notesRevision = notesRevision.incrementAndGet(),
+                        scrollToStart = previous != null && notes != previous &&
+                            notes.size >= previous.size &&
+                            (notes.any { note -> previousById[note.id]?.let { it != note } == true } ||
+                                notes.firstOrNull()?.id?.let { it !in previousById } == true),
+                        criteria = criteria,
+                    )
+                })
+            }.onStart {
+                // Keep the current cards and scroll position while appending a page.
+                if (criteria.visibleLimit == NOTES_PAGE_SIZE) {
+                    emit(NotesContentSnapshot(NotesContentState.Loading, 0L, false, criteria))
+                }
+            }.catch {
+                emit(NotesContentSnapshot(NotesContentState.Error, 0L, false, criteria))
+            }
         }
         .flowOn(searchDispatcher)
 
-    private fun NotesLoadState.toContentState(criteria: SearchCriteria): NotesContentState =
-        when (this) {
-            NotesLoadState.Loading -> NotesContentState.Loading
-            NotesLoadState.Error -> NotesContentState.Error
-            is NotesLoadState.Loaded -> {
-                if (notes.isEmpty()) {
-                    NotesContentState.Empty
-                } else {
-                    val visibleNotes = noteListProcessor.process(
-                        notes = notes,
-                        appliedQuery = criteria.appliedQuery,
-                        sortOrder = criteria.sortOrder,
-                    )
-                    if (visibleNotes.isEmpty()) {
-                        NotesContentState.SearchEmpty
-                    } else {
-                        NotesContentState.Content(visibleNotes)
-                    }
-                }
-            }
-        }
-
     private companion object {
-        const val UNINITIALIZED_NOTES_COUNT = -1
         const val STOP_TIMEOUT_MILLIS = 5_000L
     }
 }
