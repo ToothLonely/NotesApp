@@ -24,8 +24,15 @@ fun TasksListScreen(
     editor: InlineTaskEditorUiState?,
     pendingStatusTaskIds: Set<Long>,
     taskStatusContentDescription: (Task) -> String,
+    taskActionsContentDescription: (Task) -> String,
+    editTaskContentDescription: (Task) -> String,
+    deleteTaskContentDescription: (Task) -> String,
+    expandTaskTitleDescription: String,
+    collapseTaskTitleDescription: String,
     activeStateDescription: String,
     completedStateDescription: String,
+    editLabel: String,
+    deleteLabel: String,
     editorPlaceholder: String,
     editorModeDescription: String,
     editorErrorMessage: String?,
@@ -36,6 +43,8 @@ fun TasksListScreen(
     onConfirmTask: () -> Unit,
     onCancelTask: () -> Unit,
     onToggleTaskStatus: (Long) -> Unit,
+    onEditTask: (Long) -> Unit,
+    onDeleteTask: (Long) -> Unit,
     bottomContentPadding: Dp,
     state: LazyListState,
     modifier: Modifier = Modifier,
@@ -51,8 +60,10 @@ fun TasksListScreen(
             NotesAppSpacing.space2,
         ),
     ) {
-        editor?.let { editorState ->
-            item(key = "inline-task-editor") {
+        editor?.takeIf { editorState ->
+            editorState.taskId == null || tasks.none { task -> task.id == editorState.taskId }
+        }?.let { editorState ->
+            item(key = "inline-task-editor-${editorState.taskId ?: "new"}") {
                 InlineTaskEditor(
                     title = editorState.title,
                     placeholder = editorPlaceholder,
@@ -72,17 +83,44 @@ fun TasksListScreen(
             items = tasks,
             key = Task::id,
         ) { task ->
-            TaskRow(
-                task = task,
-                statusContentDescription = taskStatusContentDescription(task),
-                statusStateDescription = if (task.isCompleted) {
-                    completedStateDescription
-                } else {
-                    activeStateDescription
-                },
-                isStatusSaving = task.id in pendingStatusTaskIds,
-                onToggleStatus = { onToggleTaskStatus(task.id) },
-            )
+            val editorState = editor?.takeIf { state -> state.taskId == task.id }
+            if (editorState != null) {
+                InlineTaskEditor(
+                    title = editorState.title,
+                    placeholder = editorPlaceholder,
+                    modeDescription = editorModeDescription,
+                    errorMessage = editorErrorMessage,
+                    confirmDescription = confirmTaskDescription,
+                    cancelDescription = cancelTaskDescription,
+                    savingDescription = savingTaskDescription,
+                    isSaving = editorState.isSaving,
+                    onTitleChange = onDraftTitleChange,
+                    onConfirm = onConfirmTask,
+                    onCancel = onCancelTask,
+                )
+            } else {
+                TaskRow(
+                    task = task,
+                    statusContentDescription = taskStatusContentDescription(task),
+                    statusStateDescription = if (task.isCompleted) {
+                        completedStateDescription
+                    } else {
+                        activeStateDescription
+                    },
+                    actionsContentDescription = taskActionsContentDescription(task),
+                    editLabel = editLabel,
+                    deleteLabel = deleteLabel,
+                    editContentDescription = editTaskContentDescription(task),
+                    deleteContentDescription = deleteTaskContentDescription(task),
+                    expandTitleDescription = expandTaskTitleDescription,
+                    collapseTitleDescription = collapseTaskTitleDescription,
+                    isStatusSaving = task.id in pendingStatusTaskIds,
+                    areActionsEnabled = editor == null,
+                    onToggleStatus = { onToggleTaskStatus(task.id) },
+                    onEdit = { onEditTask(task.id) },
+                    onDelete = { onDeleteTask(task.id) },
+                )
+            }
         }
     }
 }
@@ -99,8 +137,15 @@ private fun TasksListScreenPreview() {
             editor = null,
             pendingStatusTaskIds = emptySet(),
             taskStatusContentDescription = { task -> task.title },
+            taskActionsContentDescription = { task -> "Действия задачи ${task.title}" },
+            editTaskContentDescription = { task -> "Редактировать задачу ${task.title}" },
+            deleteTaskContentDescription = { task -> "Удалить задачу ${task.title}" },
+            expandTaskTitleDescription = "Показать название задачи полностью",
+            collapseTaskTitleDescription = "Свернуть название задачи",
             activeStateDescription = "Активная",
             completedStateDescription = "Выполненная",
+            editLabel = "Редактировать",
+            deleteLabel = "Удалить",
             editorPlaceholder = "Название задачи",
             editorModeDescription = "Создание задачи",
             editorErrorMessage = null,
@@ -111,6 +156,8 @@ private fun TasksListScreenPreview() {
             onConfirmTask = {},
             onCancelTask = {},
             onToggleTaskStatus = {},
+            onEditTask = {},
+            onDeleteTask = {},
             bottomContentPadding = 0.dp,
             state = rememberLazyListState(),
         )

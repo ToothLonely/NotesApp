@@ -1,12 +1,16 @@
 package dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks
 
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.Task
+import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.TaskSortOrder
+import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.TaskStatusFilter
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.usecase.TaskListOrderer
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.usecase.TaskTitleValidator
 import dev.toothlonely.notesapp.feature.tasks.impl.testutil.FakeTasksRepository
 import dev.toothlonely.notesapp.feature.tasks.impl.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -31,7 +35,7 @@ class TasksViewModelTest {
     }
 
     @Test
-    fun `observed tasks are ordered with active tasks before completed tasks`() = runTest {
+    fun `observed tasks are ordered by creation time regardless of status`() = runTest {
         val repository = FakeTasksRepository().apply {
             tasks.value = listOf(
                 task(id = 1, isCompleted = true, createdAtMillis = 300),
@@ -44,7 +48,7 @@ class TasksViewModelTest {
         runCurrent()
 
         assertEquals(
-            listOf(3L, 2L, 1L),
+            listOf(1L, 3L, 2L),
             (viewModel.state.value.content as TasksContentState.Content).tasks.map(Task::id),
         )
     }
@@ -74,7 +78,7 @@ class TasksViewModelTest {
 
         viewModel.startCreatingTask()
         viewModel.updateDraftTitle("  \n ")
-        viewModel.confirmTaskCreation()
+        viewModel.confirmTaskEditor()
         runCurrent()
 
         assertEquals(InlineTaskEditorError.EmptyTitle, viewModel.state.value.editor?.error)
@@ -94,8 +98,8 @@ class TasksViewModelTest {
 
         viewModel.startCreatingTask()
         viewModel.updateDraftTitle("  Купить молоко  ")
-        viewModel.confirmTaskCreation()
-        viewModel.confirmTaskCreation()
+        viewModel.confirmTaskEditor()
+        viewModel.confirmTaskEditor()
         runCurrent()
 
         assertTrue(viewModel.state.value.editor?.isSaving == true)
@@ -120,7 +124,7 @@ class TasksViewModelTest {
 
         viewModel.startCreatingTask()
         viewModel.updateDraftTitle("Важная задача")
-        viewModel.confirmTaskCreation()
+        viewModel.confirmTaskEditor()
         runCurrent()
 
         assertEquals("Важная задача", viewModel.state.value.editor?.title)
@@ -135,13 +139,13 @@ class TasksViewModelTest {
 
         viewModel.startCreatingTask()
         viewModel.updateDraftTitle("Черновик")
-        viewModel.cancelTaskCreation()
+        viewModel.cancelTaskEditor()
 
         assertNull(viewModel.state.value.editor)
     }
 
     @Test
-    fun `checkbox updates optimistically moves task and remains persisted`() = runTest {
+    fun `checkbox updates optimistically without moving task and remains persisted`() = runTest {
         val gate = CompletableDeferred<Unit>()
         val repository = FakeTasksRepository().apply {
             tasks.value = listOf(
@@ -158,8 +162,8 @@ class TasksViewModelTest {
 
         val optimisticTasks =
             (viewModel.state.value.content as TasksContentState.Content).tasks
-        assertEquals(listOf(2L, 1L), optimisticTasks.map(Task::id))
-        assertTrue(optimisticTasks.last().isCompleted)
+        assertEquals(listOf(1L, 2L), optimisticTasks.map(Task::id))
+        assertTrue(optimisticTasks.first().isCompleted)
         assertEquals(setOf(1L), viewModel.state.value.pendingStatusTaskIds)
 
         gate.complete(Unit)
@@ -196,6 +200,229 @@ class TasksViewModelTest {
         assertTrue(viewModel.state.value.pendingStatusTaskIds.isEmpty())
     }
 
+    @Test
+    fun `draft query does not change results until explicit search and clear restores all`() =
+        runTest {
+            val repository = FakeTasksRepository().apply {
+                tasks.value = listOf(
+                    task(id = 1, title = "Купить молоко"),
+                    task(id = 2, title = "Позвонить маме"),
+                )
+            }
+            val viewModel = createViewModel(repository)
+            runCurrent()
+
+            viewModel.updateDraftQuery("молоко")
+            assertEquals(
+                listOf(2L, 1L),
+                (viewModel.state.value.content as TasksContentState.Content).tasks.map(Task::id),
+            )
+
+            viewModel.applySearch()
+            assertEquals(
+                listOf(1L),
+                (viewModel.state.value.content as TasksContentState.Content).tasks.map(Task::id),
+            )
+
+            viewModel.clearSearch()
+            assertEquals("", viewModel.state.value.draftQuery)
+            assertEquals("", viewModel.state.value.appliedQuery)
+            assertEquals(
+                listOf(2L, 1L),
+                (viewModel.state.value.content as TasksContentState.Content).tasks.map(Task::id),
+            )
+        }
+
+    @Test
+    fun `search filter and oldest sort combine and expose search empty state`() = runTest {
+        val repository = FakeTasksRepository().apply {
+            tasks.value = listOf(
+                task(
+                    id = 1,
+                    title = "Купить молоко",
+                    isCompleted = true,
+                    createdAtMillis = 400,
+                    updatedAtMillis = 100,
+                ),
+                task(
+                    id = 2,
+                    title = "Купить хлеб",
+                    createdAtMillis = 100,
+                    updatedAtMillis = 400,
+                ),
+                task(
+                    id = 3,
+                    title = "Позвонить",
+                    createdAtMillis = 300,
+                    updatedAtMillis = 200,
+                ),
+                task(
+                    id = 4,
+                    title = "Купить билеты",
+                    isCompleted = true,
+                    createdAtMillis = 200,
+                    updatedAtMillis = 300,
+                ),
+            )
+        }
+        val viewModel = createViewModel(repository)
+        runCurrent()
+
+        viewModel.updateDraftQuery("купить")
+        viewModel.applySearch()
+        viewModel.changeStatusFilter(TaskStatusFilter.Completed)
+        viewModel.changeSortOrder(TaskSortOrder.OldestFirst)
+
+        assertEquals(
+            listOf(4L, 1L),
+            (viewModel.state.value.content as TasksContentState.Content).tasks.map(Task::id),
+        )
+
+        viewModel.changeStatusFilter(TaskStatusFilter.Active)
+        viewModel.updateDraftQuery("нет совпадений")
+        viewModel.applySearch()
+        assertEquals(TasksContentState.SearchEmpty, viewModel.state.value.content)
+
+        viewModel.resetSearchAndFilter()
+        assertEquals(TaskStatusFilter.All, viewModel.state.value.statusFilter)
+        assertTrue(viewModel.state.value.content is TasksContentState.Content)
+    }
+
+    @Test
+    fun `only one task edits inline and cancel restores original title`() = runTest {
+        val repository = FakeTasksRepository().apply {
+            tasks.value = listOf(
+                task(id = 1, title = "Исходная"),
+                task(id = 2, title = "Другая"),
+            )
+        }
+        val viewModel = createViewModel(repository)
+        runCurrent()
+
+        viewModel.startEditingTask(1)
+        viewModel.updateDraftTitle("Черновик")
+        viewModel.startEditingTask(2)
+
+        assertEquals(1L, viewModel.state.value.editor?.taskId)
+        assertEquals("Исходная", viewModel.state.value.editor?.originalTitle)
+        assertEquals("Черновик", viewModel.state.value.editor?.title)
+
+        viewModel.cancelTaskEditor()
+        assertNull(viewModel.state.value.editor)
+        assertEquals("Исходная", repository.tasks.value.first { it.id == 1L }.title)
+    }
+
+    @Test
+    fun `edit validates trims updates timestamp and closes after success`() = runTest {
+        val repository = FakeTasksRepository().apply {
+            tasks.value = listOf(task(id = 1, title = "Исходная", updatedAtMillis = 10))
+            currentTimeMillis = 500
+        }
+        val viewModel = createViewModel(repository)
+        runCurrent()
+
+        viewModel.startEditingTask(1)
+        viewModel.updateDraftTitle("   ")
+        viewModel.confirmTaskEditor()
+        assertEquals(InlineTaskEditorError.EmptyTitle, viewModel.state.value.editor?.error)
+
+        viewModel.updateDraftTitle("  Обновлённая  ")
+        viewModel.confirmTaskEditor()
+        runCurrent()
+
+        assertEquals(listOf(1L to "Обновлённая"), repository.titleUpdates)
+        assertEquals(500, repository.tasks.value.single().updatedAtMillis)
+        assertNull(viewModel.state.value.editor)
+    }
+
+    @Test
+    fun `edit failure keeps original task and draft then retry succeeds`() = runTest {
+        val repository = FakeTasksRepository().apply {
+            tasks.value = listOf(task(id = 1, title = "Исходная"))
+            updateFailure = IllegalStateException("Update failed")
+        }
+        val viewModel = createViewModel(repository)
+        runCurrent()
+
+        viewModel.startEditingTask(1)
+        viewModel.updateDraftTitle("Новая")
+        viewModel.confirmTaskEditor()
+        runCurrent()
+
+        assertEquals("Исходная", repository.tasks.value.single().title)
+        assertEquals("Новая", viewModel.state.value.editor?.title)
+        assertEquals(InlineTaskEditorError.Storage, viewModel.state.value.editor?.error)
+
+        repository.updateFailure = null
+        viewModel.confirmTaskEditor()
+        runCurrent()
+        assertEquals("Новая", repository.tasks.value.single().title)
+        assertNull(viewModel.state.value.editor)
+    }
+
+    @Test
+    fun `delete requires named confirmation and cancel preserves task`() = runTest {
+        val repository = FakeTasksRepository().apply {
+            tasks.value = listOf(task(id = 7, title = "Важная задача"))
+        }
+        val viewModel = createViewModel(repository)
+        runCurrent()
+
+        viewModel.requestTaskDeletion(7)
+
+        assertEquals("Важная задача", viewModel.state.value.deleteConfirmation?.taskTitle)
+        assertTrue(repository.deletedTaskIds.isEmpty())
+
+        viewModel.cancelTaskDeletion()
+        assertNull(viewModel.state.value.deleteConfirmation)
+        assertEquals(listOf(7L), repository.tasks.value.map(Task::id))
+    }
+
+    @Test
+    fun `confirmed delete removes task and emits success event`() = runTest {
+        val repository = FakeTasksRepository().apply {
+            tasks.value = listOf(task(id = 7, title = "Важная задача"))
+        }
+        val viewModel = createViewModel(repository)
+        runCurrent()
+        val event = async { viewModel.events.first() }
+
+        viewModel.requestTaskDeletion(7)
+        viewModel.confirmTaskDeletion()
+        runCurrent()
+
+        assertTrue(repository.tasks.value.isEmpty())
+        assertEquals(TasksContentState.Empty, viewModel.state.value.content)
+        assertNull(viewModel.state.value.deleteConfirmation)
+        assertEquals(TasksEvent.TaskDeleted, event.await())
+    }
+
+    @Test
+    fun `delete failure keeps task and retry removes it`() = runTest {
+        val repository = FakeTasksRepository().apply {
+            tasks.value = listOf(task(id = 7, title = "Важная задача"))
+            deleteFailure = IllegalStateException("Delete failed")
+        }
+        val viewModel = createViewModel(repository)
+        runCurrent()
+
+        viewModel.requestTaskDeletion(7)
+        viewModel.confirmTaskDeletion()
+        runCurrent()
+
+        assertEquals(listOf(7L), repository.tasks.value.map(Task::id))
+        assertEquals(TaskDeleteError(7, "Важная задача"), viewModel.state.value.deleteError)
+        assertNull(viewModel.state.value.deleteConfirmation)
+
+        repository.deleteFailure = null
+        viewModel.retryTaskDeletion()
+        runCurrent()
+
+        assertTrue(repository.tasks.value.isEmpty())
+        assertNull(viewModel.state.value.deleteError)
+        assertNull(viewModel.state.value.deleteConfirmation)
+    }
+
     private fun createViewModel(repository: FakeTasksRepository) = TasksViewModel(
         tasksRepository = repository,
         taskTitleValidator = TaskTitleValidator(),
@@ -204,12 +431,15 @@ class TasksViewModelTest {
 
     private fun task(
         id: Long,
+        title: String = "Задача $id",
         isCompleted: Boolean = false,
         createdAtMillis: Long = id,
+        updatedAtMillis: Long = createdAtMillis,
     ) = Task(
         id = id,
-        title = "Задача $id",
+        title = title,
         isCompleted = isCompleted,
         createdAtMillis = createdAtMillis,
+        updatedAtMillis = updatedAtMillis,
     )
 }

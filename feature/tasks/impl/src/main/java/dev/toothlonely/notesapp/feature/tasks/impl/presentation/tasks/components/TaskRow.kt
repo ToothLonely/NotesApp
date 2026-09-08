@@ -1,5 +1,6 @@
 package dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,9 +12,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
@@ -32,15 +38,38 @@ fun TaskRow(
     task: Task,
     statusContentDescription: String,
     statusStateDescription: String,
+    actionsContentDescription: String,
+    editLabel: String,
+    deleteLabel: String,
+    editContentDescription: String,
+    deleteContentDescription: String,
+    expandTitleDescription: String,
+    collapseTitleDescription: String,
     isStatusSaving: Boolean,
+    areActionsEnabled: Boolean,
     onToggleStatus: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var isTitleExpanded by rememberSaveable(task.id, task.title) { mutableStateOf(false) }
+    var isTitleOverflowing by rememberSaveable(task.id, task.title) { mutableStateOf(false) }
+    val taskShape = MaterialTheme.shapes.large
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = NotesAppSizes.taskRowMinimumHeight),
-        shape = MaterialTheme.shapes.large,
+            .heightIn(min = NotesAppSizes.taskRowMinimumHeight)
+            .clip(taskShape)
+            .clickable(
+                enabled = isTitleOverflowing || isTitleExpanded,
+                onClickLabel = if (isTitleExpanded) {
+                    collapseTitleDescription
+                } else {
+                    expandTitleDescription
+                },
+                onClick = { isTitleExpanded = !isTitleExpanded },
+            ),
+        shape = taskShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Row(
@@ -77,9 +106,24 @@ fun TaskRow(
                 } else {
                     TextDecoration.None
                 },
-                maxLines = 3,
+                maxLines = if (isTitleExpanded) Int.MAX_VALUE else COLLAPSED_TITLE_MAX_LINES,
                 overflow = TextOverflow.Ellipsis,
+                onTextLayout = { result ->
+                    if (!isTitleExpanded) {
+                        isTitleOverflowing = result.hasVisualOverflow
+                    }
+                },
                 style = MaterialTheme.typography.bodyLarge,
+            )
+            TaskOverflowMenu(
+                menuContentDescription = actionsContentDescription,
+                editLabel = editLabel,
+                deleteLabel = deleteLabel,
+                editContentDescription = editContentDescription,
+                deleteContentDescription = deleteContentDescription,
+                onEdit = onEdit,
+                onDelete = onDelete,
+                enabled = areActionsEnabled && !isStatusSaving,
             )
         }
     }
@@ -98,8 +142,20 @@ private fun TaskRowPreview() {
             ),
             statusContentDescription = "Подготовить презентацию, активная",
             statusStateDescription = "Активная",
+            actionsContentDescription = "Действия задачи «Подготовить презентацию»",
+            editLabel = "Редактировать",
+            deleteLabel = "Удалить",
+            editContentDescription = "Редактировать задачу «Подготовить презентацию»",
+            deleteContentDescription = "Удалить задачу «Подготовить презентацию»",
+            expandTitleDescription = "Показать название задачи полностью",
+            collapseTitleDescription = "Свернуть название задачи",
             isStatusSaving = false,
+            areActionsEnabled = true,
             onToggleStatus = {},
+            onEdit = {},
+            onDelete = {},
         )
     }
 }
+
+private const val COLLAPSED_TITLE_MAX_LINES = 1
