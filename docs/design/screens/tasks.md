@@ -97,15 +97,15 @@ FAB открывает anchored popup menu над кнопкой:
 | Inline edit | выбранная строка заменена редактором с сохранённым title | confirm/cancel/IME Done |
 | Delete confirmation | rounded dialog с названием задачи поверх приглушённого списка | «Отмена» / «Удалить» |
 | Delete saving | подтверждающее действие busy, повторное нажатие disabled | дождаться результата |
-| Voice recording | status panel, timer, stop/cancel | завершить или отменить запись |
-| Voice speech processing | progress + «Распознаём речь…» | отмена, если transport позволяет |
+| Voice recording | status panel и timer; FAB меняется на Stop | завершить запись через FAB |
+| Voice speech processing | status panel с progress + «Распознаём речь…» | дождаться результата |
 | Voice GigaChat processing | progress + «Формулируем задачу…» | список остаётся видимым с меньшим emphasis |
-| Voice error | error panel | «Записать снова» либо «Повторить», если запрос можно безопасно повторить |
+| Voice error | Snackbar с короткой причиной | повторно запустить создание через FAB |
 | Storage error без content | full error state «Не удалось загрузить задачи» | «Повторить» |
 | Mutation error с content | список сохраняется, inline banner/Snackbar | повторить действие |
 | Permission denied | mic explanation | «Открыть настройки» при permanent denial |
 
-Во время voice processing FAB и повторный voice-запуск disabled. Список остаётся виден; в макете он приглушён. Bottom Navigation остаётся доступен.
+Во время записи FAB остаётся видимым и превращается в кнопку Stop. Voice/status panel только сообщает текущую фазу и не содержит кнопок. Во время обработки FAB и повторный voice-запуск disabled. Список остаётся виден; в макете он приглушён. Bottom Navigation остаётся доступен.
 
 ## Task row
 

@@ -1,11 +1,15 @@
 package dev.toothlonely.notesapp.feature.tasks.impl.presentation.tasks
 
+import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionEvent
+import dev.toothlonely.notesapp.core.domain.speech.SpeechRecognitionFailure
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.Task
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.TaskSortOrder
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.model.TaskStatusFilter
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.usecase.TaskListOrderer
 import dev.toothlonely.notesapp.feature.tasks.impl.domain.usecase.TaskTitleValidator
 import dev.toothlonely.notesapp.feature.tasks.impl.testutil.FakeTasksRepository
+import dev.toothlonely.notesapp.feature.tasks.impl.testutil.FakeGigaChatRepository
+import dev.toothlonely.notesapp.feature.tasks.impl.testutil.FakeSpeechRecognitionRepository
 import dev.toothlonely.notesapp.feature.tasks.impl.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -423,10 +427,156 @@ class TasksViewModelTest {
         assertNull(viewModel.state.value.deleteConfirmation)
     }
 
-    private fun createViewModel(repository: FakeTasksRepository) = TasksViewModel(
+    @Test
+    fun `voice task waits for GigaChat and is saved exactly once`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val repository = FakeTasksRepository()
+        val speech = FakeSpeechRecognitionRepository()
+        val gigaChat = FakeGigaChatRepository().apply {
+            formulatedTask = "Купить молоко"
+            formulationGate = gate
+        }
+        val viewModel = createViewModel(repository, speech, gigaChat)
+        runCurrent()
+
+        viewModel.startVoiceInput()
+        viewModel.startVoiceInput()
+        speech.emit(SpeechRecognitionEvent.Result("купи молоко вечером"))
+        runCurrent()
+
+        assertEquals(listOf("ru-RU"), speech.startedLocales)
+        assertEquals(TasksVoiceInputUiState.GigaChatProcessing, viewModel.state.value.voiceInput)
+        assertTrue(repository.createdTasks.isEmpty())
+
+        speech.emit(SpeechRecognitionEvent.Result("дублирующий результат"))
+        runCurrent()
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals(listOf("купи молоко вечером"), gigaChat.formulationRequests)
+        assertEquals(listOf("Купить молоко"), repository.createdTasks.map { task -> task.title })
+        assertEquals(TasksVoiceInputUiState.Idle, viewModel.state.value.voiceInput)
+    }
+
+    @Test
+    fun `GigaChat failure keeps recognized text and retry does not duplicate task`() = runTest {
+        val repository = FakeTasksRepository()
+        val speech = FakeSpeechRecognitionRepository()
+        val gigaChat = FakeGigaChatRepository().apply {
+            formulationFailure = IllegalStateException("Network failed")
+            formulatedTask = "Позвонить врачу"
+        }
+        val viewModel = createViewModel(repository, speech, gigaChat)
+        runCurrent()
+        viewModel.startVoiceInput()
+
+        speech.emit(SpeechRecognitionEvent.Result("надо позвонить врачу"))
+        runCurrent()
+
+        assertEquals(
+            TasksVoiceInputUiState.Error(
+                failure = TasksVoiceFailure.GigaChat,
+                recognizedText = "надо позвонить врачу",
+            ),
+            viewModel.state.value.voiceInput,
+        )
+        assertTrue(repository.createdTasks.isEmpty())
+
+        gigaChat.formulationFailure = null
+        viewModel.retryVoiceProcessing()
+        runCurrent()
+
+        assertEquals(2, gigaChat.formulationRequests.size)
+        assertEquals(listOf("Позвонить врачу"), repository.createdTasks.map { task -> task.title })
+        assertEquals(TasksVoiceInputUiState.Idle, viewModel.state.value.voiceInput)
+    }
+
+    @Test
+    fun `storage failure retries formulated title without another GigaChat request`() = runTest {
+        val repository = FakeTasksRepository().apply {
+            createFailure = IllegalStateException("Database failed")
+        }
+        val speech = FakeSpeechRecognitionRepository()
+        val gigaChat = FakeGigaChatRepository().apply {
+            formulatedTask = "Отправить отчёт"
+        }
+        val viewModel = createViewModel(repository, speech, gigaChat)
+        runCurrent()
+        viewModel.startVoiceInput()
+
+        speech.emit(SpeechRecognitionEvent.Result("отправь отчет"))
+        runCurrent()
+
+        assertEquals(
+            TasksVoiceInputUiState.Error(
+                failure = TasksVoiceFailure.Storage,
+                formulatedTitle = "Отправить отчёт",
+            ),
+            viewModel.state.value.voiceInput,
+        )
+
+        repository.createFailure = null
+        viewModel.retryVoiceProcessing()
+        runCurrent()
+
+        assertEquals(1, gigaChat.formulationRequests.size)
+        assertEquals(listOf("Отправить отчёт"), repository.createdTasks.map { task -> task.title })
+    }
+
+    @Test
+    fun `cancel during GigaChat processing prevents local task creation`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val repository = FakeTasksRepository()
+        val speech = FakeSpeechRecognitionRepository()
+        val gigaChat = FakeGigaChatRepository().apply {
+            formulatedTask = "Не сохранять"
+            formulationGate = gate
+        }
+        val viewModel = createViewModel(repository, speech, gigaChat)
+        runCurrent()
+        viewModel.startVoiceInput()
+        speech.emit(SpeechRecognitionEvent.Result("не сохраняй"))
+        runCurrent()
+
+        viewModel.cancelVoiceInput()
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals(TasksVoiceInputUiState.Idle, viewModel.state.value.voiceInput)
+        assertTrue(repository.createdTasks.isEmpty())
+    }
+
+    @Test
+    fun `speech failure does not call GigaChat and exposes retryable input state`() = runTest {
+        val speech = FakeSpeechRecognitionRepository()
+        val gigaChat = FakeGigaChatRepository()
+        val viewModel = createViewModel(FakeTasksRepository(), speech, gigaChat)
+        runCurrent()
+        viewModel.startVoiceInput()
+
+        speech.emit(SpeechRecognitionEvent.Error(SpeechRecognitionFailure.NoSpeech))
+        runCurrent()
+
+        assertEquals(
+            TasksVoiceInputUiState.Error(
+                failure = TasksVoiceFailure.Speech(SpeechRecognitionFailure.NoSpeech),
+            ),
+            viewModel.state.value.voiceInput,
+        )
+        assertTrue(gigaChat.formulationRequests.isEmpty())
+    }
+
+    private fun createViewModel(
+        repository: FakeTasksRepository,
+        speechRecognitionRepository: FakeSpeechRecognitionRepository =
+            FakeSpeechRecognitionRepository(),
+        gigaChatRepository: FakeGigaChatRepository = FakeGigaChatRepository(),
+    ) = TasksViewModel(
         tasksRepository = repository,
         taskTitleValidator = TaskTitleValidator(),
         taskListOrderer = TaskListOrderer(),
+        speechRecognitionRepository = speechRecognitionRepository,
+        gigaChatRepository = gigaChatRepository,
     )
 
     private fun task(
