@@ -11,12 +11,20 @@ class FakeTasksRepository : TasksRepository {
     val tasks = MutableStateFlow<List<Task>>(emptyList())
     val createdTasks = mutableListOf<NewTask>()
     val statusUpdates = mutableListOf<Pair<Long, Boolean>>()
+    val titleUpdates = mutableListOf<Pair<Long, String>>()
+    val deletedTaskIds = mutableListOf<Long>()
     var observeFailure: Throwable? = null
     var createFailure: Throwable? = null
     var statusFailure: Throwable? = null
+    var updateFailure: Throwable? = null
+    var deleteFailure: Throwable? = null
     var statusResult = true
+    var updateResult = true
+    var deleteResult = true
     var createGate: CompletableDeferred<Unit>? = null
     var statusGate: CompletableDeferred<Unit>? = null
+    var updateGate: CompletableDeferred<Unit>? = null
+    var deleteGate: CompletableDeferred<Unit>? = null
     var nextTaskId = 100L
     var currentTimeMillis = 1_000L
 
@@ -45,6 +53,30 @@ class FakeTasksRepository : TasksRepository {
         tasks.value = tasks.value.map { task ->
             if (task.id == taskId) task.copy(isCompleted = isCompleted) else task
         }
+        return true
+    }
+
+    override suspend fun updateTaskTitle(taskId: Long, title: String): Boolean {
+        updateGate?.await()
+        updateFailure?.let { throw it }
+        titleUpdates += taskId to title
+        if (!updateResult || tasks.value.none { task -> task.id == taskId }) return false
+        tasks.value = tasks.value.map { task ->
+            if (task.id == taskId) {
+                task.copy(title = title, updatedAtMillis = currentTimeMillis++)
+            } else {
+                task
+            }
+        }
+        return true
+    }
+
+    override suspend fun deleteTask(taskId: Long): Boolean {
+        deleteGate?.await()
+        deleteFailure?.let { throw it }
+        deletedTaskIds += taskId
+        if (!deleteResult || tasks.value.none { task -> task.id == taskId }) return false
+        tasks.value = tasks.value.filterNot { task -> task.id == taskId }
         return true
     }
 }

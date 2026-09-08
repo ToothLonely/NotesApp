@@ -43,3 +43,14 @@ internal val notesMigration3To4 = object : Migration(3, 4) {
         )
     }
 }
+
+internal val notesMigration4To5 = object : Migration(4, 5) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE tasks ADD COLUMN updated_at_millis INTEGER NOT NULL DEFAULT 0",
+        )
+        connection.execSQL(
+            "UPDATE tasks SET updated_at_millis = created_at_millis",
+        )
+    }
+}

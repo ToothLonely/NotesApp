@@ -10,7 +10,7 @@ import dev.toothlonely.notesapp.core.data.database.model.TaskEntity
         NoteEntity::class,
         TaskEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class NotesAppDatabase : RoomDatabase() {

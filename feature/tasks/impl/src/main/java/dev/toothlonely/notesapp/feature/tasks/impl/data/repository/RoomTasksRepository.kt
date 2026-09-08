@@ -23,4 +23,13 @@ class RoomTasksRepository(
 
     override suspend fun setTaskCompleted(taskId: Long, isCompleted: Boolean): Boolean =
         tasksDao.updateCompleted(taskId, isCompleted) > 0
+
+    override suspend fun updateTaskTitle(taskId: Long, title: String): Boolean =
+        tasksDao.updateTitle(
+            taskId = taskId,
+            title = title,
+            updatedAtMillis = timeProvider.currentTimeMillis(),
+        ) > 0
+
+    override suspend fun deleteTask(taskId: Long): Boolean = tasksDao.delete(taskId) > 0
 }

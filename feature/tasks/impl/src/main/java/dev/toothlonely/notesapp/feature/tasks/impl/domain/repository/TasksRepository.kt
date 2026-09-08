@@ -10,4 +10,8 @@ interface TasksRepository {
     suspend fun createTask(task: NewTask)
 
     suspend fun setTaskCompleted(taskId: Long, isCompleted: Boolean): Boolean
+
+    suspend fun updateTaskTitle(taskId: Long, title: String): Boolean
+
+    suspend fun deleteTask(taskId: Long): Boolean
 }

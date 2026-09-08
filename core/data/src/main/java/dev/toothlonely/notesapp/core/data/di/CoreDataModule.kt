@@ -9,6 +9,7 @@ import dev.toothlonely.notesapp.core.data.database.NotesAppDatabase
 import dev.toothlonely.notesapp.core.data.database.notesMigration1To2
 import dev.toothlonely.notesapp.core.data.database.notesMigration2To3
 import dev.toothlonely.notesapp.core.data.database.notesMigration3To4
+import dev.toothlonely.notesapp.core.data.database.notesMigration4To5
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
@@ -31,6 +32,7 @@ val coreDataModule = module {
                 notesMigration1To2,
                 notesMigration2To3,
                 notesMigration3To4,
+                notesMigration4To5,
             )
             .build()
     }

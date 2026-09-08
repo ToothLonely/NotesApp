@@ -15,12 +15,14 @@ class TaskMappersTest {
                 title = "Купить молоко",
                 isCompleted = true,
                 createdAtMillis = 123,
+                updatedAtMillis = 456,
             ),
             TaskEntity(
                 id = 5,
                 title = "Купить молоко",
                 isCompleted = true,
                 createdAtMillis = 123,
+                updatedAtMillis = 456,
             ).asDomainModel(),
         )
     }
@@ -32,6 +34,7 @@ class TaskMappersTest {
                 title = "Купить молоко",
                 isCompleted = false,
                 createdAtMillis = 456,
+                updatedAtMillis = 456,
             ),
             NewTask("Купить молоко").asEntity(createdAtMillis = 456),
         )

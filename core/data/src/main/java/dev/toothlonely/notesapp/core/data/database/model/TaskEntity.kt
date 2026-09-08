@@ -17,4 +17,6 @@ data class TaskEntity(
     val isCompleted: Boolean = false,
     @ColumnInfo(name = "created_at_millis")
     val createdAtMillis: Long,
+    @ColumnInfo(name = "updated_at_millis", defaultValue = "0")
+    val updatedAtMillis: Long = createdAtMillis,
 )

@@ -21,4 +21,17 @@ interface TasksDao {
 
     @Query("UPDATE tasks SET is_completed = :isCompleted WHERE id = :taskId")
     suspend fun updateCompleted(taskId: Long, isCompleted: Boolean): Int
+
+    @Query(
+        """
+        UPDATE tasks
+        SET title = :title,
+            updated_at_millis = :updatedAtMillis
+        WHERE id = :taskId
+        """,
+    )
+    suspend fun updateTitle(taskId: Long, title: String, updatedAtMillis: Long): Int
+
+    @Query("DELETE FROM tasks WHERE id = :taskId")
+    suspend fun delete(taskId: Long): Int
 }

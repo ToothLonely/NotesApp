@@ -5,4 +5,5 @@ data class Task(
     val title: String,
     val isCompleted: Boolean,
     val createdAtMillis: Long,
+    val updatedAtMillis: Long = createdAtMillis,
 )

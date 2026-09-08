@@ -9,9 +9,11 @@ internal fun TaskEntity.asDomainModel(): Task = Task(
     title = title,
     isCompleted = isCompleted,
     createdAtMillis = createdAtMillis,
+    updatedAtMillis = updatedAtMillis,
 )
 
 internal fun NewTask.asEntity(createdAtMillis: Long): TaskEntity = TaskEntity(
     title = title,
     createdAtMillis = createdAtMillis,
+    updatedAtMillis = createdAtMillis,
 )
