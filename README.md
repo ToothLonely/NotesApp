@@ -39,8 +39,6 @@ Room выступает единым источником истины для з
 | DI | ![Koin](https://img.shields.io/badge/Koin-4.2.2-F9A825) |
 | Network | ![Retrofit](https://img.shields.io/badge/Retrofit-3.0.0-48B983) ![OkHttp](https://img.shields.io/badge/OkHttp-5.3.0-3E4348) |
 | Concurrency | ![Coroutines](https://img.shields.io/badge/Coroutines-1.11.0-7F52FF) ![Flow](https://img.shields.io/badge/Flow-reactive-1976D2) |
-| Serialization | ![Kotlinx Serialization](https://img.shields.io/badge/Kotlinx%20Serialization-1.11.0-7F52FF) |
-| AI | ![GigaChat](https://img.shields.io/badge/GigaChat-API-21A038) |
 | Testing | ![JUnit](https://img.shields.io/badge/JUnit-4.13.2-25A162?logo=junit5&logoColor=white) ![Koin Verify](https://img.shields.io/badge/Koin-verify-F9A825) |
 
 ## Структура проекта
