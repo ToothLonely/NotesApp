@@ -15,4 +15,11 @@
 .externalNativeBuild
 .cxx
 local.properties
-/TASK.MD
+/agent/AGENTS.md
+/agent/CONTRIBUTING.md
+/agent/PLAN.md
+/agent/TASK.MD
+/android-trainee-*.md
+/docs/design/mockups/
+/.agents/
+/agent/

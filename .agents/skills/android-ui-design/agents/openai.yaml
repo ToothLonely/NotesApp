@@ -1,6 +1,0 @@
-interface:
-  display_name: "Дизайн Android UI"
-  short_description: "Проектирование Android-экранов перед реализацией Compose"
-  default_prompt: "Используй $android-ui-design, чтобы подготовить готовый к реализации дизайн этого Android UI."
-policy:
-  allow_implicit_invocation: true
